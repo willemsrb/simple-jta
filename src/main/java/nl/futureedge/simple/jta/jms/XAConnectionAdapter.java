@@ -74,9 +74,9 @@ final class XAConnectionAdapter implements Connection, JtaSystemCallback {
     public Session createSession(final boolean transacted, final int acknowledgeMode) throws JMSException {
         LOGGER.trace("createSession(transacted={},acknowledgeMode={})", transacted, acknowledgeMode);
         if (transacted) {
-            final XASession xaSession = xaConnection.createXASession();
-
             final JtaTransaction transaction = transactionManager.getRequiredTransaction();
+
+            final XASession xaSession = xaConnection.createXASession();
             try {
                 transaction.enlistResource(new XAResourceAdapter(resourceManager, supportsJoin, xaSession.getXAResource()));
             } catch (IllegalStateException | RollbackException | SystemException e) {

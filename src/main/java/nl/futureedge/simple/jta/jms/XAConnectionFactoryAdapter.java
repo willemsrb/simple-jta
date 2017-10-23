@@ -52,7 +52,7 @@ public final class XAConnectionFactoryAdapter implements ConnectionFactory, Init
      */
     @Required
     @Autowired
-    public void setJtaMonitor(final JtaTransactionManager jtaTransactionManager) {
+    public void setJtaTransactionManager(final JtaTransactionManager jtaTransactionManager) {
         this.jtaTransactionManager = jtaTransactionManager;
     }
 
