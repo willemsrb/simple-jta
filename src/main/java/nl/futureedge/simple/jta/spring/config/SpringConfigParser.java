@@ -4,7 +4,11 @@ import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.w3c.dom.Element;
 
 public final class SpringConfigParser {
-    
+
+    private SpringConfigParser() {
+        // Do not instantiate
+    }
+
     public static void handleDependsOn(final BeanDefinitionBuilder builder, final Element element) {
         final String dependsOn = element.getAttribute("depends-on");
         if (dependsOn != null && !"".equals(dependsOn)) {

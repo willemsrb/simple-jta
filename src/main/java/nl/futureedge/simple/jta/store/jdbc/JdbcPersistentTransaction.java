@@ -27,7 +27,7 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
     public void save(final TransactionStatus status) throws JtaTransactionStoreException {
         final Date now = new Date(System.currentTimeMillis());
 
-        jdbc.doInConnection((connection) -> {
+        jdbc.doInConnection(connection -> {
             final PreparedStatement updateStatement = connection.prepareStatement(sqlTemplate.updateTransactionStatus());
             updateStatement.setString(1, status.getText());
             updateStatement.setDate(2, now);
@@ -56,7 +56,7 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
         final Date now = new Date(System.currentTimeMillis());
         final String stackTrace = printStackTrace(cause);
 
-        jdbc.doInConnection((connection) -> {
+        jdbc.doInConnection(connection -> {
             final PreparedStatement updateStatement = connection.prepareStatement(sqlTemplate.updateResourceStatus());
             updateStatement.setString(1, status.getText());
             if (stackTrace == null) {
@@ -100,7 +100,7 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
 
     @Override
     public void remove() throws JtaTransactionStoreException {
-        jdbc.doInConnection((connection) -> {
+        jdbc.doInConnection(connection -> {
             final PreparedStatement deleteResources = connection.prepareStatement(sqlTemplate.deleteResourceStatus());
             deleteResources.setLong(1, transactionId);
             deleteResources.executeUpdate();
@@ -113,7 +113,7 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
 
     @Override
     public TransactionStatus getStatus() throws JtaTransactionStoreException {
-        return jdbc.doInConnection((connection) -> {
+        return jdbc.doInConnection(connection -> {
             final PreparedStatement select = connection.prepareStatement(sqlTemplate.selectTransactionStatus());
             final ResultSet resultSet = select.executeQuery();
             if (resultSet.next()) {

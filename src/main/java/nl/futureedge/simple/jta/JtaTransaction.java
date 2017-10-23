@@ -29,6 +29,8 @@ public final class JtaTransaction implements Transaction {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JtaTransaction.class);
 
+    private static final String COULD_NOT_WRITE_TRANSACTION_LOG = "Could not write transaction log";
+
     private final JtaXid globalXid;
     private final JtaTransactionStore transactionStore;
 
@@ -57,7 +59,7 @@ public final class JtaTransaction implements Transaction {
         try {
             transactionStore.active(this.globalXid);
         } catch (final JtaTransactionStoreException e) {
-            throw systemException("Could not write transaction log", e);
+            throw systemException(COULD_NOT_WRITE_TRANSACTION_LOG, e);
         }
     }
 
@@ -81,7 +83,7 @@ public final class JtaTransaction implements Transaction {
      * @param connection connection
      */
     public void registerConnection(final Object key, final Object connection) {
-        connections.computeIfAbsent(key, (unused) -> new ArrayList<>());
+        connections.computeIfAbsent(key, unused -> new ArrayList<>());
         connections.get(key).add(connection);
     }
 
@@ -115,7 +117,7 @@ public final class JtaTransaction implements Transaction {
             command.store();
             return status;
         } catch (final JtaTransactionStoreException e) {
-            LOGGER.warn("Could not write transaction log", e);
+            LOGGER.warn(COULD_NOT_WRITE_TRANSACTION_LOG, e);
             return false;
         }
     }
@@ -130,13 +132,13 @@ public final class JtaTransaction implements Transaction {
     /* ***************************** */
 
     @Override
-    public synchronized boolean delistResource(final XAResource xaResource, final int flag) throws IllegalStateException, SystemException {
+    public synchronized boolean delistResource(final XAResource xaResource, final int flag) throws SystemException {
         LOGGER.trace("delistResource(xaResource={}, flag={})", xaResource, flag);
         throw unsupportedOperationException("delist resource not supported");
     }
 
     @Override
-    public synchronized boolean enlistResource(final XAResource xaResource) throws RollbackException, IllegalStateException, SystemException {
+    public synchronized boolean enlistResource(final XAResource xaResource) throws RollbackException, SystemException {
         LOGGER.trace("enlistResource(xaResource={})", xaResource);
         throw unsupportedOperationException("enlistResource resource not supported");
     }
@@ -148,7 +150,7 @@ public final class JtaTransaction implements Transaction {
      * @throws IllegalStateException thrown if no transaction is active
      * @throws SystemException thrown if the transaction manager encounters an internal error
      */
-    public synchronized void enlistResource(final XAResourceAdapter xaResource) throws RollbackException, IllegalStateException, SystemException {
+    public synchronized void enlistResource(final XAResourceAdapter xaResource) throws RollbackException, SystemException {
         LOGGER.trace("enlistResource(xaResource={})", xaResource);
         checkActive("enlist resource");
 
@@ -160,8 +162,7 @@ public final class JtaTransaction implements Transaction {
                             xaResource.setTransactionTimeout(timeoutInSeconds);
                         }
                         // Join the 'other' xaResource
-                        // Preparing and committing will be done through the 'other' xaResource;
-                        // We don't need to keep a reference to 'this' xaResource.
+                        // Preparing and committing will be done through the 'other' xaResource, so we don't need to keep a reference to 'this' xaResource.
                         LOGGER.debug("Calling xa_start (join) on {} using xid {}", xaResource, enlistedResource.getBranchXid());
                         xaResource.start(enlistedResource.getBranchXid(), XAResource.TMJOIN);
                         return;
@@ -178,7 +179,7 @@ public final class JtaTransaction implements Transaction {
         try {
             transactionStore.active(globalXid, xaResource.getResourceManager());
         } catch (final JtaTransactionStoreException e) {
-            throw systemException("Could not write transaction log", e);
+            throw systemException(COULD_NOT_WRITE_TRANSACTION_LOG, e);
         }
 
         // Start transaction on XA resource
@@ -253,7 +254,7 @@ public final class JtaTransaction implements Transaction {
         }
     }
 
-    private void doPrepare() throws SystemException {
+    private void doPrepare() {
         LOGGER.trace("doPrepare()");
 
         // Prepare
@@ -365,7 +366,7 @@ public final class JtaTransaction implements Transaction {
     }
 
     @Override
-    public synchronized void rollback() throws IllegalStateException, SystemException {
+    public synchronized void rollback() throws SystemException {
         LOGGER.trace("rollback()");
         if (Status.STATUS_ACTIVE != status && Status.STATUS_MARKED_ROLLBACK != status) {
             throw illegalStateException("Transaction status is not active or marked for rollback (but " + status + "); rollback not allowed.");
@@ -462,8 +463,7 @@ public final class JtaTransaction implements Transaction {
     /* ***************************** */
 
     @Override
-    public synchronized void registerSynchronization(final Synchronization synchronization)
-            throws RollbackException, IllegalStateException {
+    public synchronized void registerSynchronization(final Synchronization synchronization) throws RollbackException {
         LOGGER.trace("registerSynchronization(synchronization={}", synchronization);
         checkActive("register synchronization");
 

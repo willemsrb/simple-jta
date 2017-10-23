@@ -126,7 +126,7 @@ public final class XADataSourceAdapter implements DataSource, InitializingBean {
     /* ******************************************************** */
     /* ******************************************************** */
 
-    private Object createConnectionKey(String username, String password) {
+    private Object createConnectionKey(String username) {
         return "user-" + username;
     }
 
@@ -144,13 +144,13 @@ public final class XADataSourceAdapter implements DataSource, InitializingBean {
     @Override
     public synchronized Connection getConnection() throws SQLException {
         LOGGER.trace("getConnection()");
-        return getConnection(createConnectionKey(null, null), () -> xaDataSource.getXAConnection());
+        return getConnection(createConnectionKey(null), () -> xaDataSource.getXAConnection());
     }
 
     @Override
     public synchronized Connection getConnection(final String username, final String password) throws SQLException {
         LOGGER.trace("getConnection(username={}, password not logged)", username, password);
-        return getConnection(createConnectionKey(username, password), () -> xaDataSource.getXAConnection(username, password));
+        return getConnection(createConnectionKey(username), () -> xaDataSource.getXAConnection(username, password));
     }
 
     private Connection getConnection(Object connectionKey, XaConnectionSupplier xaConnectionSupplier) throws SQLException {
@@ -161,7 +161,7 @@ public final class XADataSourceAdapter implements DataSource, InitializingBean {
             return xaConnectionSupplier.getXAConnection().getConnection();
         }
 
-        final List<XAConnectionAdapter> connections = transaction.getConnections(createConnectionKey(null, null));
+        final List<XAConnectionAdapter> connections = transaction.getConnections(connectionKey);
         final XAConnectionAdapter reopened = reopenConnectionIfPossible(connections);
 
         if (reopened != null) {

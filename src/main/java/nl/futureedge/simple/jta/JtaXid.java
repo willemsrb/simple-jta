@@ -17,8 +17,7 @@ public final class JtaXid implements Xid {
 
     private static final Charset UTF8 = Charset.forName("UTF-8");
 
-    private final AtomicLong BRANCH_SEQUENCE = new AtomicLong();
-
+    private final AtomicLong branchSequence = new AtomicLong();
     private String transactionManager;
     private long transactionId;
     private Long branchId;
@@ -104,16 +103,18 @@ public final class JtaXid implements Xid {
 
     /**
      * Create a branch XID for this global transaction id.
+     * @return a branch XID (using a new branch id)
      */
     public JtaXid createBranchXid() {
         assert branchId == null;
-        return new JtaXid(this.transactionManager, this.transactionId, BRANCH_SEQUENCE.incrementAndGet());
+        return new JtaXid(this.transactionManager, this.transactionId, branchSequence.incrementAndGet());
     }
 
     /**
      * Filter the given list of XID's to retrieve the XID's for this transaction manager.
      * @param xids list of XID's
      * @param transactionManager transaction manager unique name
+     * @return list of XID's that this transaction manager should recover
      */
     public static List<JtaXid> filterRecoveryXids(final Xid[] xids, final String transactionManager) {
         final List<JtaXid> result = new ArrayList<>();

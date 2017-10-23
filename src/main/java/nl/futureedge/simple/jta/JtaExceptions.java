@@ -63,6 +63,7 @@ public final class JtaExceptions {
 
     /**
      * Create an illegal state exception
+     * @param message message
      * @return illegal state exception
      */
     public static IllegalStateException illegalStateException(final String message) {

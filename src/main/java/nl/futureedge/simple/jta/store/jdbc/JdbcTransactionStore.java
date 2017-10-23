@@ -71,7 +71,7 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
 
         if (create) {
             try {
-                jdbc.doInConnection((connection) -> {
+                jdbc.doInConnection(connection -> {
                     final Statement statement = connection.createStatement();
                     statement.execute(sqlTemplate.createTransactionIdSequence());
                     statement.execute(sqlTemplate.createTransactionTable());
@@ -118,7 +118,7 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
 
     @Override
     public long nextTransactionId() throws JtaTransactionStoreException {
-        return jdbc.doInConnection((connection) -> {
+        return jdbc.doInConnection(connection -> {
             final PreparedStatement statement = connection.prepareStatement(sqlTemplate.selectNextTransactionId());
             final ResultSet resultSet = statement.executeQuery();
             if (!resultSet.next()) {

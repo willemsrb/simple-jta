@@ -72,10 +72,11 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
     }
 
     /**
-     * Shutdown; TODO; wait for all transactions to end, warning for each open transaction (bad developer) and maybe kill them (the transactions).
+     * Shutdown.
      */
     @Override
     public void destroy() throws Exception {
+        // TODO; wait for all transactions to end, warning for each open transaction (bad developer) and maybe kill them (the transactions).
     }
 
     /* ************************************** */
@@ -145,20 +146,20 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
     }
 
     @Override
-    public void rollback() throws IllegalStateException, SecurityException, SystemException {
+    public void rollback() throws SystemException {
         LOGGER.trace("rollback()");
         getRequiredTransaction().rollback();
     }
 
     @Override
-    public void setRollbackOnly() throws IllegalStateException, SystemException {
+    public void setRollbackOnly() throws SystemException {
         LOGGER.trace("setRollbackOnly()");
         getRequiredTransaction().setRollbackOnly();
     }
 
     @Override
     public void setTransactionTimeout(final int seconds) throws SystemException {
-        LOGGER.trace("setTransactionTimeout(seconds=" + seconds + ")");
+        LOGGER.trace("setTransactionTimeout(seconds={})", seconds);
         timeoutInSeconds.set(seconds);
 
         final JtaTransaction currentTransaction = transaction.get();
@@ -168,8 +169,8 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
     }
 
     @Override
-    public void resume(final Transaction transaction) throws InvalidTransactionException, IllegalStateException, SystemException {
-        LOGGER.trace("resume(transaction=" + transaction + ")");
+    public void resume(final Transaction transaction) throws InvalidTransactionException, SystemException {
+        LOGGER.trace("resume(transaction={})", transaction);
         throw unsupportedOperationException("Transaction suspension is not supported");
     }
 
