@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:amq="http://activemq.apache.org/schema/core"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+                           http://activemq.apache.org/schema/core http://activemq.apache.org/schema/core/activemq-core.xsd">
+
+    <context:property-placeholder/>
+
+    <!-- This creates an embedded ActiveMQ Broker -->
+    <amq:broker id="testBroker"
+                brokerId="testBroker"
+                brokerName="testBroker"
+
+                advisorySupport="false"
+                useJmx="false"
+                useShutdownHook="false"
+                enableStatistics="false"
+                dedicatedTaskRunner="false"
+
+                persistent="true"
+                dataDirectory="target/broker-data"
+
+                schedulerSupport="true"
+                schedulerDirectory="target/broker-scheduler">
+
+        <amq:destinations>
+            <amq:queue physicalName="QueueOne"/>
+            <amq:queue physicalName="QueueTwo"/>
+        </amq:destinations>
+
+        <!-- How can this broker be reached -->
+        <amq:transportConnectors>
+            <amq:transportConnector uri="tcp://localhost:${test.broker.port}"/>
+        </amq:transportConnectors>
+
+        <!-- How do we persistently store messages -->
+        <amq:persistenceAdapter>
+            <amq:jdbcPersistenceAdapter dataSource="#activeMqDataSource"/>
+        </amq:persistenceAdapter>
+
+        <amq:destinationPolicy>
+            <amq:policyMap>
+                <amq:policyEntries>
+                    <amq:policyEntry queue=">" producerFlowControl="true" memoryLimit="1mb">
+                        <amq:deadLetterStrategy>
+                            <amq:individualDeadLetterStrategy queuePrefix="DLQ." useQueueForQueueMessages="true"/>
+                        </amq:deadLetterStrategy>
+                    </amq:policyEntry>
+                </amq:policyEntries>
+            </amq:policyMap>
+        </amq:destinationPolicy>
+
+        <amq:systemUsage>
+            <amq:systemUsage>
+                <amq:memoryUsage>
+                    <amq:memoryUsage limit="32 mb"/>
+                </amq:memoryUsage>
+                <amq:storeUsage>
+                    <amq:storeUsage limit="32 mb"/>
+                </amq:storeUsage>
+                <amq:tempUsage>
+                    <amq:tempUsage limit="32 mb"/>
+                </amq:tempUsage>
+            </amq:systemUsage>
+        </amq:systemUsage>
+
+        <amq:plugins>
+            <amq:redeliveryPlugin fallbackToDeadLetter="true" sendToDlqIfMaxRetriesExceeded="true">
+                <amq:redeliveryPolicyMap>
+                    <amq:redeliveryPolicyMap>
+                        <amq:defaultEntry>
+                            <amq:redeliveryPolicy maximumRedeliveries="2" initialRedeliveryDelay="5000" redeliveryDelay="10000"/>
+                        </amq:defaultEntry>
+                    </amq:redeliveryPolicyMap>
+                </amq:redeliveryPolicyMap>
+            </amq:redeliveryPlugin>
+
+            <amq:simpleAuthenticationPlugin anonymousAccessAllowed="true">
+                <amq:users>
+                    <amq:authenticationUser username="admin" password="admin" groups="admins"/>
+                </amq:users>
+            </amq:simpleAuthenticationPlugin>
+
+            <amq:authorizationPlugin>
+                <amq:map>
+                    <amq:authorizationMap>
+                        <amq:authorizationEntries>
+                            <!-- Defaults -->
+                            <amq:authorizationEntry queue=">" read="admins" write="admins" admin="admins"/>
+                            <amq:authorizationEntry topic=">" read="admins" write="admins" admin="admins"/>
+                            <amq:authorizationEntry topic="ActiveMQ.Advisory.>" read="anonymous" write="anonymous" admin="anonymous"/>
+                            <amq:authorizationEntry queue="QueueOne" read="anonymous" write="anonymous" admin="admins"/>
+                            <amq:authorizationEntry queue="QueueTwo" read="anonymous" write="anonymous" admin="admins"/>
+                        </amq:authorizationEntries>
+                    </amq:authorizationMap>
+                </amq:map>
+            </amq:authorizationPlugin>
+        </amq:plugins>
+    </amq:broker>
+
+    <bean name="activeMqDataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+        <property name="driverClassName" value="org.hsqldb.jdbc.JDBCDriver"/>
+        <property name="url" value="jdbc:hsqldb:hsql://localhost:${test.database.port}/broker"/>
+        <property name="username" value="sa"/>
+        <property name="password" value=""/>
+    </bean>
+
+</beans>

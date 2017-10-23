@@ -1,0 +1,3 @@
+# Tooling related information for the simple-jta namespace
+http\://www.springframework.org/schema/beans@name=Simple JTA Namespace
+http\://www.springframework.org/schema/beans@prefix=simple-jta
