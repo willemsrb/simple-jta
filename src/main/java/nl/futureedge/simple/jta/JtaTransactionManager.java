@@ -228,21 +228,30 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
     }
 
     private void recoveryCommit(final XAResourceAdapter xaResource, final JtaXid xid) throws SystemException {
+        LOGGER.info("Committing partial transaction {}", xid);
         try {
-            LOGGER.info("Committing partial transaction {}", xid);
             transactionStore.committing(xid, xaResource.getResourceManager());
-            try {
-                xaResource.commit(xid, true);
-                transactionStore.committed(xid, xaResource.getResourceManager());
-            } catch (final XAException e) {
-                LOGGER.error("XA exception during recovery commit", e);
-                transactionStore.commitFailed(xid, xaResource.getResourceManager(), e);
-            }
-        } catch (final JtaTransactionStoreException e) {
-            final SystemException systemException = new SystemException("Could not write transaction log");
-            systemException.initCause(e);
-            throw systemException;
+        } catch (JtaTransactionStoreException e) {
+            throw JtaExceptions.systemException("Could not write transaction log; recovery could not be started!", e);
         }
+
+        try {
+            xaResource.commit(xid, true);
+            try {
+                transactionStore.committed(xid, xaResource.getResourceManager());
+            } catch (final JtaTransactionStoreException e) {
+                throw JtaExceptions.systemException("Could not write transaction log; recovery could not be logged! TRANSACTION SYSTEM IS NOW INCONSISTENT!", e);
+            }
+        } catch (final XAException e) {
+            LOGGER.error("XA exception during recovery commit", e);
+            try {
+                transactionStore.commitFailed(xid, xaResource.getResourceManager(), e);
+            } catch (final JtaTransactionStoreException e2) {
+                throw JtaExceptions.systemException("Could not write transaction log; recovery could not be logged! TRANSACTION SYSTEM IS NOW INCONSISTENT!", e2);
+            }
+        }
+
+
     }
 
     private void recoveryRollback(final XAResourceAdapter xaResource, final JtaXid xid) throws SystemException {
