@@ -35,28 +35,28 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
     private JdbcHelper jdbc;
     private JdbcSqlTemplate sqlTemplate;
 
-    public void setCreate(boolean create) {
+    public void setCreate(final boolean create) {
         this.create = create;
     }
 
-    public void setDriver(String jdbcDriver) {
+    public void setDriver(final String jdbcDriver) {
         this.jdbcDriver = jdbcDriver;
     }
 
     @Required
-    public void setUrl(String jdbcUrl) {
+    public void setUrl(final String jdbcUrl) {
         this.jdbcUrl = jdbcUrl;
     }
 
-    public void setUser(String jdbcUser) {
+    public void setUser(final String jdbcUser) {
         this.jdbcUser = jdbcUser;
     }
 
-    public void setPassword(String jdbcPassword) {
+    public void setPassword(final String jdbcPassword) {
         this.jdbcPassword = jdbcPassword;
     }
 
-    public void setSqlTemplate(JdbcSqlTemplate sqlTemplate) {
+    public void setSqlTemplate(final JdbcSqlTemplate sqlTemplate) {
         this.sqlTemplate = sqlTemplate;
     }
 
@@ -70,6 +70,7 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
         }
 
         if (create) {
+            LOGGER.debug("Creating tables");
             try {
                 jdbc.doInConnection(connection -> {
                     final Statement statement = connection.createStatement();
@@ -118,6 +119,7 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
 
     @Override
     public long nextTransactionId() throws JtaTransactionStoreException {
+        LOGGER.debug("nextTransactionId()");
         return jdbc.doInConnection(connection -> {
             final PreparedStatement statement = connection.prepareStatement(sqlTemplate.selectNextTransactionId());
             final ResultSet resultSet = statement.executeQuery();

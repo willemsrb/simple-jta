@@ -10,8 +10,12 @@ import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 import nl.futureedge.simple.jta.store.impl.PersistentTransaction;
 import nl.futureedge.simple.jta.store.impl.TransactionStatus;
 import nl.futureedge.simple.jta.store.jdbc.sql.JdbcSqlTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 final class JdbcPersistentTransaction implements PersistentTransaction {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(JdbcPersistentTransaction.class);
 
     private final JdbcHelper jdbc;
     private final JdbcSqlTemplate sqlTemplate;
@@ -25,6 +29,7 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
 
     @Override
     public void save(final TransactionStatus status) throws JtaTransactionStoreException {
+        LOGGER.debug("save(status={})", status);
         final Date now = new Date(System.currentTimeMillis());
 
         jdbc.doInConnection(connection -> {
@@ -40,6 +45,7 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
                 insertStatement.setString(2, status.getText());
                 insertStatement.setDate(3, now);
                 insertStatement.setDate(4, now);
+                insertStatement.executeUpdate();
             }
 
             return null;
@@ -47,12 +53,13 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
     }
 
     @Override
-    public void save(TransactionStatus status, String resourceManager) throws JtaTransactionStoreException {
+    public void save(final TransactionStatus status, final String resourceManager) throws JtaTransactionStoreException {
         save(status, resourceManager, null);
     }
 
     @Override
     public void save(final TransactionStatus status, final String resourceManager, final Exception cause) throws JtaTransactionStoreException {
+        LOGGER.debug("save(status={}, resourceManager={})", status, resourceManager, cause);
         final Date now = new Date(System.currentTimeMillis());
         final String stackTrace = printStackTrace(cause);
 
@@ -81,6 +88,7 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
                 }
                 insertStatement.setDate(5, now);
                 insertStatement.setDate(6, now);
+                insertStatement.executeUpdate();
             }
 
             return null;
@@ -100,6 +108,7 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
 
     @Override
     public void remove() throws JtaTransactionStoreException {
+        LOGGER.debug("remove()");
         jdbc.doInConnection(connection -> {
             final PreparedStatement deleteResources = connection.prepareStatement(sqlTemplate.deleteResourceStatus());
             deleteResources.setLong(1, transactionId);
@@ -113,8 +122,10 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
 
     @Override
     public TransactionStatus getStatus() throws JtaTransactionStoreException {
+        LOGGER.debug("getStatus()");
         return jdbc.doInConnection(connection -> {
             final PreparedStatement select = connection.prepareStatement(sqlTemplate.selectTransactionStatus());
+            select.setLong(1, transactionId);
             final ResultSet resultSet = select.executeQuery();
             if (resultSet.next()) {
                 return TransactionStatus.fromText(resultSet.getString(1));

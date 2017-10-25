@@ -2,25 +2,25 @@ package nl.futureedge.simple.jta.store.jdbc.sql;
 
 public class DefaultSqlTemplate implements JdbcSqlTemplate {
 
-    private String createTransactionIdSequence = "create sequence trans_seq";
+    private String createTransactionIdSequence = "create sequence transaction_seq";
 
-    private String selectNextTransactionId = "select nextval('trans_seq')";
+    private String selectNextTransactionId = "select nextval('transaction_seq')";
 
-    private String createTransactionTable = "create table trans(\n"
+    private String createTransactionTable = "create table transactions(\n"
             + "    id bigint not null,\n"
             + "    status varchar(30) not null,\n"
             + "    created timestamp not null,\n"
             + "    updated timestamp not null\n"
             + ")";
 
-    private String updateTransactionStatus = "update trans set status=?, updated=? where id=?";
+    private String updateTransactionStatus = "update transactions set status=?, updated=? where id=?";
 
-    private String insertTransactionStatus = "insert into trans(id, status, created, updated) values (?, ?, ?, ?)";
+    private String insertTransactionStatus = "insert into transactions(id, status, created, updated) values (?, ?, ?, ?)";
 
-    private String selectTransactionStatus = "select status from trans where id=?";
+    private String selectTransactionStatus = "select status from transactions where id=?";
 
-    private String createResourceTable = "create table resource(\n"
-            + "    trans_id bigint not null,\n"
+    private String createResourceTable = "create table transaction_resources(\n"
+            + "    transaction_id bigint not null,\n"
             + "    name varchar(30) not null,\n"
             + "    status varchar(30) not null,\n"
             + "    cause text,\n"
@@ -28,13 +28,13 @@ public class DefaultSqlTemplate implements JdbcSqlTemplate {
             + "    updated timestamp not null\n"
             + ")";
 
-    private String updateResourceStatus = "update resource set status=?, cause=?, updated=? where trans_id=? and name=?";
+    private String updateResourceStatus = "update transaction_resources set status=?, cause=?, updated=? where transaction_id=? and name=?";
 
-    private String insertResourceStatus = "insert into resource(trans_id, name, status, cause, created, updated) values (?,?, ?, ?, ?, ?)";
+    private String insertResourceStatus = "insert into transaction_resources(transaction_id, name, status, cause, created, updated) values (?,?, ?, ?, ?, ?)";
 
-    private String deleteResourceStatus = "delete from resource where trans_id=?";
+    private String deleteResourceStatus = "delete from transaction_resources where transaction_id=?";
 
-    private String deleteTransactionStatus = "delete from trans where id=?";
+    private String deleteTransactionStatus = "delete from transactions where id=?";
 
     public final void setCreateTransactionIdSequence(final String createTransactionIdSequence) {
         this.createTransactionIdSequence = createTransactionIdSequence;

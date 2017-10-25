@@ -46,7 +46,14 @@
         <property name="password" value=""/>
     </bean>
 
-    <jdbc:initialize-database ignore-failures="NONE" data-source="testDataSource">
+    <jdbc:initialize-database ignore-failures="DROPS" data-source="testDataSource">
         <jdbc:script location="classpath:sql/test-ddl.sql" encoding="UTF-8"/>
     </jdbc:initialize-database>
+
+    <bean id="transDataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource" depends-on="embeddedDatabaseServer">
+        <property name="driverClassName" value="org.hsqldb.jdbc.JDBCDriver"/>
+        <property name="url" value="jdbc:hsqldb:hsql://localhost:${test.database.port}/trans"/>
+        <property name="username" value="sa"/>
+        <property name="password" value=""/>
+    </bean>
 </beans>

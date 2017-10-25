@@ -4,13 +4,17 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 final class JdbcHelper {
 
-    private String jdbcDriver;
-    private String jdbcUrl;
-    private String jdbcUser;
-    private String jdbcPassword;
+    private static final Logger LOGGER = LoggerFactory.getLogger(JdbcHelper.class);
+
+    private final String jdbcDriver;
+    private final String jdbcUrl;
+    private final String jdbcUser;
+    private final String jdbcPassword;
 
     private Connection connection;
 
@@ -22,6 +26,7 @@ final class JdbcHelper {
     }
 
     <T> T doInConnection(final JdbcFunction<T> returnable) throws JtaTransactionStoreException {
+        LOGGER.info("doInConnection: {}", returnable);
         synchronized (connection) {
             try {
                 T result = returnable.apply(connection);
