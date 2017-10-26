@@ -170,5 +170,4 @@ public interface JtaTransactionStore {
      * @throws JtaTransactionStoreException Thrown if the transaction store encounters an unexpected error condition
      */
     void rollbackFailed(JtaXid xid, String resourceManager, XAException cause) throws JtaTransactionStoreException;
-
 }

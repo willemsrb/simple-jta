@@ -4,12 +4,17 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import nl.futureedge.simple.jta.JtaXid;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 import nl.futureedge.simple.jta.store.impl.BaseTransactionStore;
 import nl.futureedge.simple.jta.store.impl.PersistentTransaction;
+import nl.futureedge.simple.jta.store.impl.TransactionStatus;
 import nl.futureedge.simple.jta.store.jdbc.sql.DefaultSqlTemplate;
 import nl.futureedge.simple.jta.store.jdbc.sql.HsqldbSqlTemplate;
 import nl.futureedge.simple.jta.store.jdbc.sql.JdbcSqlTemplate;
@@ -73,10 +78,11 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
             LOGGER.debug("Creating tables");
             try {
                 jdbc.doInConnection(connection -> {
-                    final Statement statement = connection.createStatement();
-                    statement.execute(sqlTemplate.createTransactionIdSequence());
-                    statement.execute(sqlTemplate.createTransactionTable());
-                    statement.execute(sqlTemplate.createResourceTable());
+                    try (final Statement statement = connection.createStatement()) {
+                        statement.execute(sqlTemplate.createTransactionIdSequence());
+                        statement.execute(sqlTemplate.createTransactionTable());
+                        statement.execute(sqlTemplate.createResourceTable());
+                    }
                     return null;
                 });
             } catch (JtaTransactionStoreException e) {
@@ -108,9 +114,76 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
     /* *** CLEANUP ************** */
     /* ************************** */
 
+    Map<TransactionStatus, List<TransactionStatus>> CLEANABLE = new EnumMap<TransactionStatus, List<TransactionStatus>>(TransactionStatus.class) {{
+        // ACTIVE; should only contain ACTIVE
+        put(TransactionStatus.ACTIVE, Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.ROLLING_BACK, TransactionStatus.ROLLED_BACK));
+
+        // PREPARING/PREPARED; can be cleaned when PREPARED no longer exists (COMMITTING should not exist)
+        put(TransactionStatus.PREPARING,
+                Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTED, TransactionStatus.ROLLING_BACK,
+                        TransactionStatus.ROLLED_BACK));
+        put(TransactionStatus.PREPARED,
+                Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTED, TransactionStatus.ROLLING_BACK,
+                        TransactionStatus.ROLLED_BACK));
+
+        // COMMITTING/COMMITTED; can only be cleaned when everything is COMMITTED!
+        put(TransactionStatus.COMMITTING, Arrays.asList(TransactionStatus.COMMITTED));
+        put(TransactionStatus.COMMITTED, Arrays.asList(TransactionStatus.COMMITTED));
+
+        // Do not clean TransactionStatus.COMMIT_FAILED
+
+        // ROLLING_BACK/ROLLED_BACK; can be cleaned when PREPARED no longer exists
+        put(TransactionStatus.ROLLING_BACK,
+                Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTING, TransactionStatus.COMMITTED,
+                        TransactionStatus.ROLLING_BACK, TransactionStatus.ROLLED_BACK));
+        put(TransactionStatus.ROLLED_BACK,
+                Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTING, TransactionStatus.COMMITTED,
+                        TransactionStatus.ROLLING_BACK, TransactionStatus.ROLLED_BACK));
+
+        // Do not clean TransactionStatus.ROLLBACK_FAILED
+    }};
+
     @Override
     public void cleanup() throws JtaTransactionStoreException {
-        // TODO
+        jdbc.doInConnection(connection -> {
+            try (final PreparedStatement transactionsStatement = connection.prepareStatement(sqlTemplate.selectTransactionIdAndStatus());
+                 final ResultSet transactionsResult = transactionsStatement.executeQuery()) {
+                while (transactionsResult.next()) {
+                    Long transactionId = transactionsResult.getLong(1);
+                    TransactionStatus transactionStatus = TransactionStatus.fromText(transactionsResult.getString(2));
+
+                    if (CLEANABLE.containsKey(transactionStatus)) {
+                        boolean cleanable = true;
+
+                        try (final PreparedStatement resourcesStatement = connection.prepareStatement(sqlTemplate.selectResourceStatus())) {
+                            resourcesStatement.setLong(1, transactionId);
+                            try (final ResultSet resourcesResult = resourcesStatement.executeQuery()) {
+                                while (resourcesResult.next()) {
+                                    final TransactionStatus resourceStatus = TransactionStatus.fromText(resourcesResult.getString(1));
+                                    if (!CLEANABLE.get(transactionStatus).contains(resourceStatus)) {
+                                        cleanable = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (cleanable) {
+                            try (final PreparedStatement deleteResources = connection.prepareStatement(sqlTemplate.deleteResourceStatus())) {
+                                deleteResources.setLong(1, transactionId);
+                                deleteResources.executeUpdate();
+                            }
+                            try (final PreparedStatement deleteTransaction = connection.prepareStatement(sqlTemplate.deleteTransactionStatus())) {
+                                deleteTransaction.setLong(1, transactionId);
+                                deleteTransaction.executeUpdate();
+                            }
+                        }
+                    }
+                }
+            }
+
+            return null;
+        });
     }
 
     /* ************************** */
@@ -121,12 +194,13 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
     public long nextTransactionId() throws JtaTransactionStoreException {
         LOGGER.debug("nextTransactionId()");
         return jdbc.doInConnection(connection -> {
-            final PreparedStatement statement = connection.prepareStatement(sqlTemplate.selectNextTransactionId());
-            final ResultSet resultSet = statement.executeQuery();
-            if (!resultSet.next()) {
-                throw new SQLException("No row returned from sequence select statement");
+            try (final PreparedStatement statement = connection.prepareStatement(sqlTemplate.selectNextTransactionId());
+                 final ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    throw new SQLException("No row returned from sequence select statement");
+                }
+                return resultSet.getLong(1);
             }
-            return resultSet.getLong(1);
         });
     }
 

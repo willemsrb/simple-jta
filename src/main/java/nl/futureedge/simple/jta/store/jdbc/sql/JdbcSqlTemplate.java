@@ -9,20 +9,25 @@ public interface JdbcSqlTemplate {
 
     String createTransactionTable();
 
-    String updateTransactionStatus();
+    String selectTransactionIdAndStatus();
+
+    String selectTransactionStatus();
 
     String insertTransactionStatus();
 
-    String selectTransactionStatus();
+    String updateTransactionStatus();
 
     String deleteTransactionStatus();
 
 
     String createResourceTable();
 
-    String updateResourceStatus();
+    String selectResourceStatus();
 
     String insertResourceStatus();
 
+    String updateResourceStatus();
+
     String deleteResourceStatus();
+
 }
