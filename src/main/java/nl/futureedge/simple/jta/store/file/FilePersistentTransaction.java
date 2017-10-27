@@ -1,73 +1,74 @@
 package nl.futureedge.simple.jta.store.file;
 
-import java.io.BufferedReader;
+import java.io.Closeable;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
+import java.io.RandomAccessFile;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 import nl.futureedge.simple.jta.store.impl.PersistentTransaction;
 import nl.futureedge.simple.jta.store.impl.TransactionStatus;
-import nl.futureedge.simple.jta.xid.JtaXid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-final class FilePersistentTransaction implements PersistentTransaction {
+final class FilePersistentTransaction implements PersistentTransaction, Closeable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FilePersistentTransaction.class);
 
     public static final String PREFIX = "trans-";
     public static final String SUFFIX = ".log";
 
+    private static final String BRANCH_SEPARATOR = "-";
     private static final String RESOURCE_MANAGER_SEPARATOR = ":";
     private static final String ENTRY_SEPARATOR = "\n";
 
+    private final long transactionId;
     private final File file;
 
-    private final FileOutputStream output;
-    private final Writer writer;
+    private final RandomAccessFile raf;
 
     private TransactionStatus status;
+    private Map<String, TransactionStatus> resourceStatuses = new HashMap<>();
 
-    FilePersistentTransaction(File baseDirectory, JtaXid xid) throws JtaTransactionStoreException {
-        file = new File(baseDirectory, PREFIX + xid.getTransactionId() + SUFFIX);
-        if (file.exists()) {
-            // Read
-            status = readStatus(file);
-        }
+    private final FileTransactionStore store;
 
+    FilePersistentTransaction(FileTransactionStore store, final File baseDirectory, final long transactionId) throws JtaTransactionStoreException {
+        this.transactionId = transactionId;
+        this.file = new File(baseDirectory, PREFIX + transactionId + SUFFIX);
+        this.store = store;
         try {
-            output = new FileOutputStream(file, true);
-        } catch (FileNotFoundException e) {
-            throw new JtaTransactionStoreException("Could not open transaction log file", e);
+            raf = new RandomAccessFile(file, "rws");
+            readStatus();
+        } catch (IOException e) {
+            throw new JtaTransactionStoreException("Could not create, open or read sequence file", e);
         }
-        writer = new OutputStreamWriter(output);
     }
 
-    private static TransactionStatus readStatus(File file) throws JtaTransactionStoreException {
-        try (final BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            String lastStatus = null;
-            for (String line = ""; line != null; line = reader.readLine()) {
-                if (line.isEmpty()) {
-                    continue;
-                }
-                if (line.contains(RESOURCE_MANAGER_SEPARATOR)) {
-                    continue;
-                }
-                lastStatus = line;
+    private void readStatus() throws IOException {
+        for (String line = ""; line != null; line = raf.readLine()) {
+            System.out.println("LINE: " + line);
+            if (line.isEmpty()) {
+                continue;
             }
-            return TransactionStatus.valueOf(lastStatus);
-        } catch (final IOException e) {
-            throw new JtaTransactionStoreException("Could not read existing transaction log", e);
+
+            final int resourceIndex = line.indexOf(RESOURCE_MANAGER_SEPARATOR);
+            if (resourceIndex != -1) {
+                // Line contains resource status
+                resourceStatuses.put(line.substring(0, resourceIndex), TransactionStatus.valueOf(line.substring(resourceIndex + 1)));
+            } else {
+                // Line contains global status
+                status = TransactionStatus.valueOf(line);
+            }
         }
     }
 
     @Override
     public void save(final TransactionStatus status) throws JtaTransactionStoreException {
-        write(status, null, null, null);
+        write(status, null, null);
         this.status = status;
     }
 
@@ -78,59 +79,62 @@ final class FilePersistentTransaction implements PersistentTransaction {
 
     @Override
     public void save(TransactionStatus status, long branchId, String resourceManager, Exception cause) throws JtaTransactionStoreException {
-        write(status, branchId, resourceManager, cause);
+        this.resourceStatuses.put(resourceManager + BRANCH_SEPARATOR + Long.toString(branchId), status);
+        write(status, branchId, resourceManager);
     }
 
-    private void write(TransactionStatus status, Long branchId, String resourceManager, Exception cause) throws JtaTransactionStoreException {
+    private void write(TransactionStatus status, Long branchId, String resourceManager) throws JtaTransactionStoreException {
         try {
+            StringBuilder lineToWrite = new StringBuilder();
+
             if (resourceManager != null) {
-                writer.write(resourceManager);
-                writer.write(RESOURCE_MANAGER_SEPARATOR);
-                writer.write(Long.toString(branchId));
-                writer.write(RESOURCE_MANAGER_SEPARATOR);
+                lineToWrite.append(resourceManager);
+                lineToWrite.append(BRANCH_SEPARATOR);
+                lineToWrite.append(Long.toString(branchId));
+                lineToWrite.append(RESOURCE_MANAGER_SEPARATOR);
             }
-            writer.write(status.getText());
-            writer.write(ENTRY_SEPARATOR);
+            lineToWrite.append(status.getText());
+            lineToWrite.append(ENTRY_SEPARATOR);
 
             // Flush to disk
-            writer.flush();
-            output.getFD().sync();
+            raf.writeChars(lineToWrite.toString());
         } catch (IOException e) {
             throw new JtaTransactionStoreException("Could not write transaction file", e);
         }
     }
 
     @Override
-    public void remove() throws JtaTransactionStoreException {
-        try {
-            writer.flush();
-            output.getFD().sync();
-        } catch (IOException e) {
-            // Ignore
-            LOGGER.warn("Could not flush transaction file", e);
-        }
-
-        try {
-            writer.close();
-        } catch (final IOException e) {
-            // Ignore
-            LOGGER.warn("Could not close transaction writer", e);
-        }
-        try {
-            output.close();
-        } catch (final IOException e) {
-            // Ignore
-            LOGGER.warn("Could not close transaction file", e);
-        }
-
-        if (!file.renameTo(new File(file.getParentFile(), file.getName() + ".completed." + System.currentTimeMillis()))) {
-            LOGGER.warn("Could not remove transaction file");
-        }
-        //file.delete();
+    public void close() throws IOException {
+        raf.close();
     }
 
     @Override
-    public TransactionStatus getStatus() throws JtaTransactionStoreException {
+    public void remove() throws JtaTransactionStoreException {
+        try {
+            close();
+        } catch (final IOException e) {
+            // Ignore
+            LOGGER.warn("Could not close file access", e);
+        }
+
+        try {
+            Files.delete(Paths.get(file.toURI()));
+        } catch (final IOException e) {
+            // Ignore
+            LOGGER.warn("Could not delete transaction file", e);
+        }
+
+        if (store != null) {
+            store.persistentTransactionRemoved(transactionId);
+        }
+    }
+
+    @Override
+    public TransactionStatus getStatus() {
         return status;
+    }
+
+    public Collection<TransactionStatus> getResourceStatusses() {
+        return resourceStatuses.values();
     }
 }

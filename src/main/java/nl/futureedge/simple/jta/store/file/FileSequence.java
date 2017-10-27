@@ -1,19 +1,22 @@
 package nl.futureedge.simple.jta.store.file;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.concurrent.atomic.AtomicLong;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 
-final class FileSequence {
+final class FileSequence implements Closeable {
+
+    public static final String SEQUENCE = "sequence";
 
     private final File file;
     private final RandomAccessFile raf;
     private final AtomicLong sequence;
 
     FileSequence(final File baseDirectory) throws JtaTransactionStoreException {
-        file = new File(baseDirectory, FilePersistentTransaction.PREFIX + "sequence" + FilePersistentTransaction.SUFFIX);
+        file = new File(baseDirectory, SEQUENCE + FilePersistentTransaction.SUFFIX);
         try {
             raf = new RandomAccessFile(file, "rws");
             sequence = new AtomicLong(read(raf));
@@ -45,5 +48,9 @@ final class FileSequence {
         raf.writeLong(result);
     }
 
+    @Override
+    public void close() throws IOException {
+        raf.close();
+    }
 
 }

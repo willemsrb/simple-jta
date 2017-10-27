@@ -1,5 +1,9 @@
 package nl.futureedge.simple.jta.store.impl;
 
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
 import javax.transaction.xa.XAException;
 import nl.futureedge.simple.jta.store.JtaTransactionStore;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
@@ -15,6 +19,37 @@ import org.slf4j.LoggerFactory;
 public abstract class BaseTransactionStore implements JtaTransactionStore {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseTransactionStore.class);
+
+    /**
+     * Cleanable global and resource statuses.
+     */
+    protected static final Map<TransactionStatus, List<TransactionStatus>> CLEANABLE = new EnumMap<>(TransactionStatus.class);
+
+    static {
+        // ACTIVE; should only contain ACTIVE (and ROLLED_BACK from recovery)
+        CLEANABLE.put(TransactionStatus.ACTIVE, Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.ROLLED_BACK));
+
+        // PREPARING/PREPARED; can be cleaned when PREPARED no longer exists (COMMITTING should not exist)
+        CLEANABLE.put(TransactionStatus.PREPARING,
+                Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTED, TransactionStatus.ROLLED_BACK));
+        CLEANABLE.put(TransactionStatus.PREPARED,
+                Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTED, TransactionStatus.ROLLED_BACK));
+
+        // COMMITTING/COMMITTED; can only be cleaned when everything is COMMITTED!
+        CLEANABLE.put(TransactionStatus.COMMITTING, Arrays.asList(TransactionStatus.COMMITTED));
+        CLEANABLE.put(TransactionStatus.COMMITTED, Arrays.asList(TransactionStatus.COMMITTED));
+
+        // Do not clean TransactionStatus.COMMIT_FAILED
+
+        // ROLLING_BACK/ROLLED_BACK; can be cleaned when PREPARED no longer exists
+        CLEANABLE.put(TransactionStatus.ROLLING_BACK,
+                Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTED, TransactionStatus.ROLLED_BACK));
+        CLEANABLE.put(TransactionStatus.ROLLED_BACK,
+                Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTED, TransactionStatus.ROLLED_BACK));
+
+        // Do not clean TransactionStatus.ROLLBACK_FAILED
+    }
+
 
     /**
      * Retrieves a delegate to stably store information about the transaction.

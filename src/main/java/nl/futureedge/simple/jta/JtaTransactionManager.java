@@ -33,6 +33,9 @@ import org.springframework.beans.factory.annotation.Required;
 public final class JtaTransactionManager implements InitializingBean, DisposableBean, TransactionManager, JtaSystemCallback {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JtaTransactionManager.class);
+    public static final String
+            COULD_NOT_WRITE_TRANSACTION_LOG_INCONSISTENT =
+            "Could not write transaction log; recovery could not be logged! TRANSACTION SYSTEM IS NOW INCONSISTENT!";
 
     private final ThreadLocal<Integer> timeoutInSeconds = new ThreadLocal<>();
     private final ThreadLocal<JtaTransaction> transaction = new ThreadLocal<>();
@@ -261,7 +264,7 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
         try {
             transactionStore.committed(xid, xaResource.getResourceManager());
         } catch (final JtaTransactionStoreException e) {
-            throw JtaExceptions.systemException("Could not write transaction log; recovery could not be logged! TRANSACTION SYSTEM IS NOW INCONSISTENT!", e);
+            throw JtaExceptions.systemException(COULD_NOT_WRITE_TRANSACTION_LOG_INCONSISTENT, e);
         }
     }
 
@@ -269,7 +272,7 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
         try {
             transactionStore.commitFailed(xid, xaResource.getResourceManager(), e);
         } catch (final JtaTransactionStoreException e2) {
-            throw JtaExceptions.systemException("Could not write transaction log; recovery could not be logged! TRANSACTION SYSTEM IS NOW INCONSISTENT!", e2);
+            throw JtaExceptions.systemException(COULD_NOT_WRITE_TRANSACTION_LOG_INCONSISTENT, e2);
         }
     }
 
@@ -297,7 +300,7 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
         try {
             transactionStore.rolledBack(xid, xaResource.getResourceManager());
         } catch (final JtaTransactionStoreException e) {
-            throw JtaExceptions.systemException("Could not write transaction log; recovery could not be logged! TRANSACTION SYSTEM IS NOW INCONSISTENT!", e);
+            throw JtaExceptions.systemException(COULD_NOT_WRITE_TRANSACTION_LOG_INCONSISTENT, e);
         }
     }
 
@@ -305,7 +308,7 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
         try {
             transactionStore.rollbackFailed(xid, xaResource.getResourceManager(), e);
         } catch (final JtaTransactionStoreException e2) {
-            throw JtaExceptions.systemException("Could not write transaction log; recovery could not be logged! TRANSACTION SYSTEM IS NOW INCONSISTENT!", e2);
+            throw JtaExceptions.systemException(COULD_NOT_WRITE_TRANSACTION_LOG_INCONSISTENT, e2);
         }
     }
 
