@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:simple-jta="http://www.future-edge.nl/schema/simple/jta"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.2.xsd
+                           http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+                           http://www.future-edge.nl/schema/simple/jta http://www.future-edge.nl/schema/simple/jta/simple-jta.xsd">
+
+    <context:property-placeholder/>
+    <context:annotation-config/>
+
+    <bean name="beanOne" class="java.lang.Object" />
+    <bean name="beanTwo" class="java.lang.Object" />
+    <bean name="beanThree" class="java.lang.Object" />
+
+    <!-- TransactionManager -->
+    <simple-jta:transaction-manager name="transactionManager" unique-name="test" depends-on="beanOne,beanTwo">
+        <simple-jta:jdbc-transaction-store create="true" url="jdbc:hsqldb:hsql://localhost:${test.database.port}/trans" user="sa" password="" depends-on="beanThree" />
+    </simple-jta:transaction-manager>
+
+    <import resource="classpath:test-base-context.xml" />
+</beans>
+

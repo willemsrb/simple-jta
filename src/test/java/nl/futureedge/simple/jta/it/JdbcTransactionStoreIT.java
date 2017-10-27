@@ -28,7 +28,7 @@ import org.springframework.core.env.PropertiesPropertySource;
 
 public class JdbcTransactionStoreIT {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIT.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(JdbcTransactionStoreIT.class);
 
     private static Properties portProperties = new Properties();
     private static GenericXmlApplicationContext databaseContext;

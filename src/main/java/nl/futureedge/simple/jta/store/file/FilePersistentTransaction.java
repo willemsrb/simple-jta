@@ -73,7 +73,7 @@ final class FilePersistentTransaction implements PersistentTransaction {
 
     @Override
     public void save(final TransactionStatus status, long branchId, final String resourceManager) throws JtaTransactionStoreException {
-        write(status, null, resourceManager, null);
+        save(status, branchId, resourceManager, null);
     }
 
     @Override

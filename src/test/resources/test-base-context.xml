@@ -10,14 +10,6 @@
     <context:property-placeholder/>
     <context:annotation-config/>
 
-    <!-- TransactionManager -->
-    <simple-jta:transaction-manager name="transactionManager" unique-name="test">
-        <simple-jta:jdbc-transaction-store create="true" url="jdbc:hsqldb:hsql://localhost:${test.database.port}/trans" user="sa" password="" />
-        <!--
-        <simple-jta:file-transaction-store location="target/transaction-logs"/>
-        -->
-    </simple-jta:transaction-manager>
-
     <!-- DataSource -->
     <bean name="xaDataSource" class="org.hsqldb.jdbc.pool.JDBCXADataSource">
         <property name="url" value="jdbc:hsqldb:hsql://localhost:${test.database.port}/test"/>
