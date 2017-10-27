@@ -2,7 +2,7 @@ package nl.futureedge.simple.jta.store;
 
 
 /**
- * Exception thrown if the tranaction store encounters an error.
+ * Exception thrown if the transaction store encounters an error.
  */
 public final class JtaTransactionStoreException extends Exception {
     private static final long serialVersionUID = 1L;

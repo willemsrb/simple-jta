@@ -1,5 +1,8 @@
 package nl.futureedge.simple.jta.store.jdbc.sql;
 
+/**
+ * Default SQL template.
+ */
 public class DefaultSqlTemplate implements JdbcSqlTemplate {
 
     private String createTransactionIdSequence = "create sequence transaction_seq";
@@ -35,7 +38,9 @@ public class DefaultSqlTemplate implements JdbcSqlTemplate {
 
     private String selectResourceStatus = "select status from transaction_resources where transaction_id=?";
 
-    private String insertResourceStatus = "insert into transaction_resources(transaction_id, branch_id, name, status, cause, created, updated) values (?,?,?,?,?,?,?)";
+    private String
+            insertResourceStatus =
+            "insert into transaction_resources(transaction_id, branch_id, name, status, cause, created, updated) values (?,?,?,?,?,?,?)";
 
     private String updateResourceStatus = "update transaction_resources set status=?, cause=?, updated=? where transaction_id=? and branch_id=? and name=?";
 
@@ -49,7 +54,6 @@ public class DefaultSqlTemplate implements JdbcSqlTemplate {
     public final void setSelectNextTransactionId(final String selectNextTransactionId) {
         this.selectNextTransactionId = selectNextTransactionId;
     }
-
 
     @Override
     public final String createTransactionIdSequence() {
@@ -156,7 +160,6 @@ public class DefaultSqlTemplate implements JdbcSqlTemplate {
     public final String updateResourceStatus() {
         return updateResourceStatus;
     }
-
 
     @Override
     public final String deleteResourceStatus() {

@@ -59,7 +59,7 @@ final class FilePersistentTransaction implements PersistentTransaction {
                 }
                 lastStatus = line;
             }
-            return TransactionStatus.fromText(lastStatus);
+            return TransactionStatus.valueOf(lastStatus);
         } catch (final IOException e) {
             throw new JtaTransactionStoreException("Could not read existing transaction log", e);
         }

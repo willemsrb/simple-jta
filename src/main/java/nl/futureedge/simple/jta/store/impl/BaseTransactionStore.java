@@ -9,10 +9,19 @@ import nl.futureedge.simple.jta.xid.JtaXid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Base transaction store implementation.
+ */
 public abstract class BaseTransactionStore implements JtaTransactionStore {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseTransactionStore.class);
 
+    /**
+     * Retrieves a delegate to stably store information about the transaction.
+     * @param xid xid
+     * @return transaction store delegate for the given xid
+     * @throws JtaTransactionStoreException Thrown if the transaction store encounters an unexpected error condition
+     */
     protected abstract PersistentTransaction getPersistentTransaction(JtaXid xid) throws JtaTransactionStoreException;
 
     @Override

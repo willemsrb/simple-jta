@@ -108,6 +108,11 @@ final class XAConnectionAdapter implements Connection, JtaSystemCallback {
         }
     }
 
+    /**
+     * Reopen this connection if possible; a connection can be reopened if it was closed but not yet committed.
+     * @return true, if and only if this connection was reopend
+     * @throws SQLException Thrown if the connection encountered an exception
+     */
     public boolean reopen() throws SQLException {
         if (connection.isClosed()) {
             return false;

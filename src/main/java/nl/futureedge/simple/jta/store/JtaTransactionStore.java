@@ -17,7 +17,7 @@ public interface JtaTransactionStore {
     long nextTransactionId() throws JtaTransactionStoreException;
 
     /**
-     * Determine (for recovery) if the given xid was committing
+     * Determine (for recovery) if the given xid was committing.
      * @param xid xid
      * @return true, if the xid was committing
      * @throws JtaTransactionStoreException Thrown if the transaction store encounters an unexpected error condition
@@ -25,7 +25,7 @@ public interface JtaTransactionStore {
     boolean isCommitting(BranchJtaXid xid) throws JtaTransactionStoreException;
 
     /*
-     * Execute cleanup; check
+     * Execute cleanup.
      */
     void cleanup() throws JtaTransactionStoreException;
 

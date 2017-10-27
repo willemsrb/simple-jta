@@ -150,7 +150,7 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
                  final ResultSet transactionsResult = transactionsStatement.executeQuery()) {
                 while (transactionsResult.next()) {
                     Long transactionId = transactionsResult.getLong(1);
-                    TransactionStatus transactionStatus = TransactionStatus.fromText(transactionsResult.getString(2));
+                    TransactionStatus transactionStatus = TransactionStatus.valueOf(transactionsResult.getString(2));
 
                     if (CLEANABLE.containsKey(transactionStatus)) {
                         boolean cleanable = true;
@@ -159,7 +159,7 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
                             resourcesStatement.setLong(1, transactionId);
                             try (final ResultSet resourcesResult = resourcesStatement.executeQuery()) {
                                 while (resourcesResult.next()) {
-                                    final TransactionStatus resourceStatus = TransactionStatus.fromText(resourcesResult.getString(1));
+                                    final TransactionStatus resourceStatus = TransactionStatus.valueOf(resourcesResult.getString(1));
                                     if (!CLEANABLE.get(transactionStatus).contains(resourceStatus)) {
                                         cleanable = false;
                                         break;

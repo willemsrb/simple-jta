@@ -131,7 +131,7 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
             select.setLong(1, transactionId);
             final ResultSet resultSet = select.executeQuery();
             if (resultSet.next()) {
-                return TransactionStatus.fromText(resultSet.getString(1));
+                return TransactionStatus.valueOf(resultSet.getString(1));
             } else {
                 return null;
             }

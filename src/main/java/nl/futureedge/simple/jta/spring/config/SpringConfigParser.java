@@ -13,7 +13,7 @@ public final class SpringConfigParser {
         final String dependsOn = element.getAttribute("depends-on");
         if (dependsOn != null && !"".equals(dependsOn)) {
             final String[] beanNames = dependsOn.trim().split(",");
-            for (String beanName : beanNames) {
+            for (final String beanName : beanNames) {
                 if (!"".equals(beanName.trim())) {
                     builder.addDependsOn(beanName.trim());
                 }

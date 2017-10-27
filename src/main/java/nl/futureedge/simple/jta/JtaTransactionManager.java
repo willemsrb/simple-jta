@@ -55,10 +55,17 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
         this.uniqueName = uniqueName;
     }
 
+    /**
+     * @return unique name for this transaction manager
+     */
     public String getUniqueName() {
         return uniqueName;
     }
 
+    /**
+     * Set the transaction store to use.
+     * @param transactionStore transaction store
+     */
     @Required
     @Autowired
     public void setJtaTransactionStore(final JtaTransactionStore transactionStore) {
@@ -66,7 +73,7 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
     }
 
     /**
-     * Startup.
+     * Startup; executes an early cleanup on the transaction store.
      */
     @Override
     public void afterPropertiesSet() throws Exception {

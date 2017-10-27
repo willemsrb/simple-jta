@@ -10,7 +10,6 @@ import java.util.Properties;
 import javax.sql.DataSource;
 import javax.transaction.xa.XAException;
 import nl.futureedge.simple.jta.ReflectionTestUtils;
-import nl.futureedge.simple.jta.store.impl.TransactionStatus;
 import nl.futureedge.simple.jta.store.jdbc.JdbcTransactionStore;
 import nl.futureedge.simple.jta.store.jdbc.sql.HsqldbSqlTemplate;
 import nl.futureedge.simple.jta.xid.BranchJtaXid;
@@ -82,12 +81,6 @@ public class JdbcTransactionStoreIT {
     public void determineSqlTemplate() throws Exception {
         Assert.assertNotNull(ReflectionTestUtils.getField(subject, "jdbc"));
         Assert.assertTrue(ReflectionTestUtils.getField(subject, "sqlTemplate") instanceof HsqldbSqlTemplate);
-    }
-
-    @Test
-    public void testTransactionStatus() {
-        Assert.assertEquals(null, TransactionStatus.fromText("BLA"));
-        Assert.assertEquals(TransactionStatus.ACTIVE, TransactionStatus.fromText("ACTIVE"));
     }
 
     @Test

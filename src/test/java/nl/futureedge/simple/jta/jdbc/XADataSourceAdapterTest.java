@@ -35,7 +35,7 @@ public class XADataSourceAdapterTest {
         subject = new XADataSourceAdapter();
         subject.setUniqueName("testXaDataSource");
         subject.setXaDataSource(xaDataSource);
-        subject.setJtaMonitor(transactionManager);
+        subject.setJtaTransactionManager(transactionManager);
         subject.setSupportsJoin(true);
     }
 

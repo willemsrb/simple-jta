@@ -62,11 +62,11 @@ public final class XADataSourceAdapter implements DataSource, InitializingBean {
      */
     @Required
     @Autowired
-    public void setJtaMonitor(final JtaTransactionManager jtaTransactionManager) {
+    public void setJtaTransactionManager(final JtaTransactionManager jtaTransactionManager) {
         this.jtaTransactionManager = jtaTransactionManager;
     }
 
-    public void setSupportsJoin(boolean supportsJoin) {
+    public void setSupportsJoin(final boolean supportsJoin) {
         this.supportsJoin = supportsJoin;
     }
 

@@ -12,10 +12,17 @@ import org.hibernate.engine.transaction.jta.platform.spi.JtaPlatformException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.jta.JtaTransactionManager;
 
+/**
+ * Bridge between Spring and Hibernate to let hibernate use the Spring JTA Transaction Manager as a JTA platform.
+ */
 public final class SpringJtaPlatform implements JtaPlatform {
 
     private JtaTransactionManager springJtaTransactionManager;
 
+    /**
+     * The Spring JTA transaction manager to use.
+     * @param springJtaTransactionManager Spring JTA transaction manager
+     */
     @Autowired(required = true)
     public void setSpringJtaTransactionManager(final JtaTransactionManager springJtaTransactionManager) {
         this.springJtaTransactionManager = springJtaTransactionManager;
