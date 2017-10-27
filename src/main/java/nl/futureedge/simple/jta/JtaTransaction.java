@@ -157,26 +157,14 @@ public final class JtaTransaction implements Transaction {
         checkActive("enlist resource");
 
         if (xaResource.supportsJoin()) {
-            for (final EnlistedXaResource enlistedResource : enlistedXaResources) {
-                try {
-                    if (enlistedResource.getXaResource().isSameRM(xaResource)) {
-                        if (timeoutInSeconds != null) {
-                            xaResource.setTransactionTimeout(timeoutInSeconds);
-                        }
-                        // Join the 'other' xaResource
-                        // Preparing and committing will be done through the 'other' xaResource, so we don't need to keep a reference to 'this' xaResource.
-                        LOGGER.debug("Calling xa_start (join) on {} using xid {}", xaResource, enlistedResource.getBranchXid());
-                        xaResource.start(enlistedResource.getBranchXid(), XAResource.TMJOIN);
-                        return;
-                    }
-                } catch (XAException e) {
-                    throw systemException("Could not join transaction on XA resource", e);
-                }
+            LOGGER.debug("Join supported; looping through enlisted resources to possibly join already enlisted resource");
+            if (join(xaResource)) {
+                return;
             }
         }
 
         // Store
-        BranchJtaXid branchXid = globalXid.createBranchXid();
+        final BranchJtaXid branchXid = globalXid.createBranchXid();
         enlistedXaResources.add(new EnlistedXaResource(xaResource, branchXid));
         try {
             transactionStore.active(branchXid, xaResource.getResourceManager());
@@ -194,6 +182,26 @@ public final class JtaTransaction implements Transaction {
         } catch (final XAException e) {
             throw systemException("Could not start transaction on XA resource", e);
         }
+    }
+
+    private boolean join(final XAResourceAdapter xaResource) throws SystemException {
+        for (final EnlistedXaResource enlistedResource : enlistedXaResources) {
+            try {
+                if (enlistedResource.getXaResource().isSameRM(xaResource)) {
+                    if (timeoutInSeconds != null) {
+                        xaResource.setTransactionTimeout(timeoutInSeconds);
+                    }
+                    // Join the 'other' xaResource
+                    // Preparing and committing will be done through the 'other' xaResource, so we don't need to keep a reference to 'this' xaResource.
+                    LOGGER.debug("Calling xa_start (join) on {} using xid {}", xaResource, enlistedResource.getBranchXid());
+                    xaResource.start(enlistedResource.getBranchXid(), XAResource.TMJOIN);
+                    return true;
+                }
+            } catch (XAException e) {
+                throw systemException("Could not join transaction on XA resource", e);
+            }
+        }
+        return false;
     }
 
     /* ***************************** */
@@ -406,7 +414,7 @@ public final class JtaTransaction implements Transaction {
                     } catch (final XAException e) {
                         rollbackOk = false;
                         LOGGER.warn("XA exception during end", e);
-                        // TODO: What should be done with the exception?
+                        // Exception is lost here, as we also try to rollback
                     }
                 }
                 LOGGER.debug("Calling xa_rollback on {} using xid {}", xaResource, branchXid);

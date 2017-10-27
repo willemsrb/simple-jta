@@ -1,10 +1,12 @@
 package nl.futureedge.simple.jta.store.jdbc;
 
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -141,7 +143,6 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
         // Do not clean TransactionStatus.ROLLBACK_FAILED
     }
 
-    ;
 
     @Override
     public void cleanup() throws JtaTransactionStoreException {
@@ -153,30 +154,10 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
                     TransactionStatus transactionStatus = TransactionStatus.valueOf(transactionsResult.getString(2));
 
                     if (CLEANABLE.containsKey(transactionStatus)) {
-                        boolean cleanable = true;
-
-                        try (final PreparedStatement resourcesStatement = connection.prepareStatement(sqlTemplate.selectResourceStatus())) {
-                            resourcesStatement.setLong(1, transactionId);
-                            try (final ResultSet resourcesResult = resourcesStatement.executeQuery()) {
-                                while (resourcesResult.next()) {
-                                    final TransactionStatus resourceStatus = TransactionStatus.valueOf(resourcesResult.getString(1));
-                                    if (!CLEANABLE.get(transactionStatus).contains(resourceStatus)) {
-                                        cleanable = false;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
+                        boolean cleanable = isCleanable(connection, transactionId, CLEANABLE.get(transactionStatus));
 
                         if (cleanable) {
-                            try (final PreparedStatement deleteResources = connection.prepareStatement(sqlTemplate.deleteResourceStatus())) {
-                                deleteResources.setLong(1, transactionId);
-                                deleteResources.executeUpdate();
-                            }
-                            try (final PreparedStatement deleteTransaction = connection.prepareStatement(sqlTemplate.deleteTransactionStatus())) {
-                                deleteTransaction.setLong(1, transactionId);
-                                deleteTransaction.executeUpdate();
-                            }
+                            cleanTransaction(connection, transactionId);
                         }
                     }
                 }
@@ -184,6 +165,33 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
 
             return null;
         });
+    }
+
+    private boolean isCleanable(final Connection connection, final Long transactionId, final Collection<TransactionStatus> allowedResourceStatuses)
+            throws SQLException {
+        try (final PreparedStatement resourcesStatement = connection.prepareStatement(sqlTemplate.selectResourceStatus())) {
+            resourcesStatement.setLong(1, transactionId);
+            try (final ResultSet resourcesResult = resourcesStatement.executeQuery()) {
+                while (resourcesResult.next()) {
+                    final TransactionStatus resourceStatus = TransactionStatus.valueOf(resourcesResult.getString(1));
+                    if (!allowedResourceStatuses.contains(resourceStatus)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    private void cleanTransaction(final Connection connection, final Long transactionId) throws SQLException {
+        try (final PreparedStatement deleteResources = connection.prepareStatement(sqlTemplate.deleteResourceStatus())) {
+            deleteResources.setLong(1, transactionId);
+            deleteResources.executeUpdate();
+        }
+        try (final PreparedStatement deleteTransaction = connection.prepareStatement(sqlTemplate.deleteTransactionStatus())) {
+            deleteTransaction.setLong(1, transactionId);
+            deleteTransaction.executeUpdate();
+        }
     }
 
     /* ************************** */

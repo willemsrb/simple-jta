@@ -85,7 +85,7 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
      */
     @Override
     public void destroy() throws Exception {
-        // TODO; wait for all transactions to end, warning for each open transaction (bad developer) and maybe kill them (the transactions).
+        // Nothing now; we could wait for all transactions to end, warning for each open transaction (bad developer) and maybe kill them (the transactions).
     }
 
     /* ************************************** */
@@ -238,44 +238,74 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
 
     private void recoveryCommit(final XAResourceAdapter xaResource, final BranchJtaXid xid) throws SystemException {
         LOGGER.info("Committing partial transaction {}", xid);
+        storeCommitting(xaResource, xid);
+
+        try {
+            xaResource.commit(xid, true);
+            storeCommitted(xaResource, xid);
+        } catch (final XAException e) {
+            LOGGER.error("XA exception during recovery commit", e);
+            storeCommitFailed(xaResource, xid, e);
+        }
+    }
+
+    private void storeCommitting(final XAResourceAdapter xaResource, final BranchJtaXid xid) throws SystemException {
         try {
             transactionStore.committing(xid, xaResource.getResourceManager());
         } catch (JtaTransactionStoreException e) {
             throw JtaExceptions.systemException("Could not write transaction log; recovery could not be started!", e);
         }
+    }
 
+    private void storeCommitted(final XAResourceAdapter xaResource, final BranchJtaXid xid) throws SystemException {
         try {
-            xaResource.commit(xid, true);
-            try {
-                transactionStore.committed(xid, xaResource.getResourceManager());
-            } catch (final JtaTransactionStoreException e) {
-                throw JtaExceptions.systemException("Could not write transaction log; recovery could not be logged! TRANSACTION SYSTEM IS NOW INCONSISTENT!", e);
-            }
-        } catch (final XAException e) {
-            LOGGER.error("XA exception during recovery commit", e);
-            try {
-                transactionStore.commitFailed(xid, xaResource.getResourceManager(), e);
-            } catch (final JtaTransactionStoreException e2) {
-                throw JtaExceptions.systemException("Could not write transaction log; recovery could not be logged! TRANSACTION SYSTEM IS NOW INCONSISTENT!", e2);
-            }
+            transactionStore.committed(xid, xaResource.getResourceManager());
+        } catch (final JtaTransactionStoreException e) {
+            throw JtaExceptions.systemException("Could not write transaction log; recovery could not be logged! TRANSACTION SYSTEM IS NOW INCONSISTENT!", e);
+        }
+    }
+
+    private void storeCommitFailed(final XAResourceAdapter xaResource, final BranchJtaXid xid, final XAException e) throws SystemException {
+        try {
+            transactionStore.commitFailed(xid, xaResource.getResourceManager(), e);
+        } catch (final JtaTransactionStoreException e2) {
+            throw JtaExceptions.systemException("Could not write transaction log; recovery could not be logged! TRANSACTION SYSTEM IS NOW INCONSISTENT!", e2);
         }
     }
 
     private void recoveryRollback(final XAResourceAdapter xaResource, final BranchJtaXid xid) throws SystemException {
+        LOGGER.info("Rolling back partial transaction {}", xid);
+        storeRollingBack(xaResource, xid);
         try {
-            LOGGER.info("Rolling back partial transaction {}", xid);
+            xaResource.rollback(xid);
+            storeRolledBack(xaResource, xid);
+        } catch (final XAException e) {
+            LOGGER.error("XA exception during recovery rollback", e);
+            storeRollbackFailed(xaResource, xid, e);
+        }
+    }
+
+    private void storeRollingBack(final XAResourceAdapter xaResource, final BranchJtaXid xid) throws SystemException {
+        try {
             transactionStore.rollingBack(xid, xaResource.getResourceManager());
-            try {
-                xaResource.rollback(xid);
-                transactionStore.rolledBack(xid, xaResource.getResourceManager());
-            } catch (final XAException e) {
-                LOGGER.error("XA exception during recovery rollback", e);
-                transactionStore.rollbackFailed(xid, xaResource.getResourceManager(), e);
-            }
         } catch (final JtaTransactionStoreException e) {
-            final SystemException systemException = new SystemException("Could not write transaction log");
-            systemException.initCause(e);
-            throw systemException;
+            throw JtaExceptions.systemException("Could not write transaction log; recovery could not be started!", e);
+        }
+    }
+
+    private void storeRolledBack(final XAResourceAdapter xaResource, final BranchJtaXid xid) throws SystemException {
+        try {
+            transactionStore.rolledBack(xid, xaResource.getResourceManager());
+        } catch (final JtaTransactionStoreException e) {
+            throw JtaExceptions.systemException("Could not write transaction log; recovery could not be logged! TRANSACTION SYSTEM IS NOW INCONSISTENT!", e);
+        }
+    }
+
+    private void storeRollbackFailed(final XAResourceAdapter xaResource, final BranchJtaXid xid, final XAException e) throws SystemException {
+        try {
+            transactionStore.rollbackFailed(xid, xaResource.getResourceManager(), e);
+        } catch (final JtaTransactionStoreException e2) {
+            throw JtaExceptions.systemException("Could not write transaction log; recovery could not be logged! TRANSACTION SYSTEM IS NOW INCONSISTENT!", e2);
         }
     }
 
