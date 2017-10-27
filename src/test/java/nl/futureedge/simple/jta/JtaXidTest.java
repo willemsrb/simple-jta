@@ -15,7 +15,6 @@ public class JtaXidTest {
         GlobalJtaXid xid = new GlobalJtaXid("tm001", 1L);
         Assert.assertEquals("tm001", xid.getTransactionManager());
         Assert.assertEquals(1L, xid.getTransactionId());
-        Assert.assertNull(xid.getBranchId());
         Assert.assertNotNull(xid.getFormatId());
         Assert.assertNotNull(xid.getGlobalTransactionId());
         Assert.assertNotNull(xid.getBranchQualifier());

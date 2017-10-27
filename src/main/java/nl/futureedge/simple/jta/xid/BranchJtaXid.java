@@ -21,7 +21,6 @@ public final class BranchJtaXid extends BaseJtaXid {
         return super.getBranchId();
     }
 
-
     /**
      * Filter the given list of XID's to retrieve the XID's for this transaction manager.
      * @param xids list of XID's

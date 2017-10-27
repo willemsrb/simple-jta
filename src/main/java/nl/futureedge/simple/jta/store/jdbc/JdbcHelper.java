@@ -4,12 +4,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 final class JdbcHelper {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(JdbcHelper.class);
 
     private final String jdbcDriver;
     private final String jdbcUrl;

@@ -114,30 +114,34 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
     /* *** CLEANUP ************** */
     /* ************************** */
 
-    Map<TransactionStatus, List<TransactionStatus>> CLEANABLE = new EnumMap<TransactionStatus, List<TransactionStatus>>(TransactionStatus.class) {{
+    private static final Map<TransactionStatus, List<TransactionStatus>> CLEANABLE = new EnumMap<>(TransactionStatus.class);
+
+    static {
         // ACTIVE; should only contain ACTIVE (and ROLLED_BACK from recovery)
-        put(TransactionStatus.ACTIVE, Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.ROLLED_BACK));
+        CLEANABLE.put(TransactionStatus.ACTIVE, Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.ROLLED_BACK));
 
         // PREPARING/PREPARED; can be cleaned when PREPARED no longer exists (COMMITTING should not exist)
-        put(TransactionStatus.PREPARING,
+        CLEANABLE.put(TransactionStatus.PREPARING,
                 Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTED, TransactionStatus.ROLLED_BACK));
-        put(TransactionStatus.PREPARED,
+        CLEANABLE.put(TransactionStatus.PREPARED,
                 Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTED, TransactionStatus.ROLLED_BACK));
 
         // COMMITTING/COMMITTED; can only be cleaned when everything is COMMITTED!
-        put(TransactionStatus.COMMITTING, Arrays.asList(TransactionStatus.COMMITTED));
-        put(TransactionStatus.COMMITTED, Arrays.asList(TransactionStatus.COMMITTED));
+        CLEANABLE.put(TransactionStatus.COMMITTING, Arrays.asList(TransactionStatus.COMMITTED));
+        CLEANABLE.put(TransactionStatus.COMMITTED, Arrays.asList(TransactionStatus.COMMITTED));
 
         // Do not clean TransactionStatus.COMMIT_FAILED
 
         // ROLLING_BACK/ROLLED_BACK; can be cleaned when PREPARED no longer exists
-        put(TransactionStatus.ROLLING_BACK,
+        CLEANABLE.put(TransactionStatus.ROLLING_BACK,
                 Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTED, TransactionStatus.ROLLED_BACK));
-        put(TransactionStatus.ROLLED_BACK,
+        CLEANABLE.put(TransactionStatus.ROLLED_BACK,
                 Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTED, TransactionStatus.ROLLED_BACK));
 
         // Do not clean TransactionStatus.ROLLBACK_FAILED
-    }};
+    }
+
+    ;
 
     @Override
     public void cleanup() throws JtaTransactionStoreException {

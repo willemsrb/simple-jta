@@ -77,7 +77,7 @@ class BaseJtaXid implements JtaXid {
     /**
      * @return return branch id (null if this is the global transaction)
      */
-    public Long getBranchId() {
+    protected Long getBranchId() {
         return branchId;
     }
 
@@ -94,21 +94,6 @@ class BaseJtaXid implements JtaXid {
     @Override
     public byte[] getBranchQualifier() {
         return branchQualifier;
-    }
-
-    private static boolean globalTransactionIdMatches(final byte[] partial, final byte[] toValidate) {
-        assert partial.length == 64;
-        if (toValidate.length != 64) {
-            return false;
-        }
-
-        // Compare up to byte 56 after which to transaction id comess
-        for (int index = 0; index < 56; index++) {
-            if (partial[index] != toValidate[index]) {
-                return false;
-            }
-        }
-        return true;
     }
 
     @Override
