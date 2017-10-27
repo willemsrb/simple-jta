@@ -1,7 +1,7 @@
 package nl.futureedge.simple.jta.store.file;
 
 import java.io.File;
-import nl.futureedge.simple.jta.JtaXid;
+import nl.futureedge.simple.jta.xid.JtaXid;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 import nl.futureedge.simple.jta.store.impl.BaseTransactionStore;
 import nl.futureedge.simple.jta.store.impl.PersistentTransaction;

@@ -1,23 +1,18 @@
-package nl.futureedge.simple.jta;
+package nl.futureedge.simple.jta.xid;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicLong;
-import javax.transaction.xa.Xid;
 
 /**
  * Jta XID; not for external use!
  */
-public final class JtaXid implements Xid {
+class BaseJtaXid implements JtaXid {
 
-    private static final int SIMPLE_JTA_FORMAT = 0x1ee3;
+    static final int SIMPLE_JTA_FORMAT = 0x1ee3;
 
     private static final Charset UTF8 = Charset.forName("UTF-8");
 
-    private final AtomicLong branchSequence = new AtomicLong();
     private String transactionManager;
     private long transactionId;
     private Long branchId;
@@ -26,16 +21,7 @@ public final class JtaXid implements Xid {
     private final byte[] globalTransactionId;
     private final byte[] branchQualifier;
 
-    /**
-     * Constructor (for XID created by this transaction manager).
-     * @param transactionManager transaction manager unique name
-     * @param transactionId transaction id
-     */
-    public JtaXid(final String transactionManager, final long transactionId) {
-        this(transactionManager, transactionId, null);
-    }
-
-    private JtaXid(final String transactionManager, final long transactionId, final Long branchId) {
+    BaseJtaXid(final String transactionManager, final long transactionId, final Long branchId) {
         this.transactionManager = transactionManager;
         this.transactionId = transactionId;
         this.branchId = branchId;
@@ -45,7 +31,7 @@ public final class JtaXid implements Xid {
         this.branchQualifier = createBranchId(this.branchId);
     }
 
-    private static byte[] createGlobalTransactionId(final String transactionManager, final long transactionId) {
+    static byte[] createGlobalTransactionId(final String transactionManager, final long transactionId) {
         final ByteBuffer buffer = ByteBuffer.allocate(64);
 
         // Add transaction manager
@@ -75,6 +61,7 @@ public final class JtaXid implements Xid {
     /**
      * @return the transaction manager unique name
      */
+    @Override
     public String getTransactionManager() {
         return transactionManager;
     }
@@ -82,8 +69,16 @@ public final class JtaXid implements Xid {
     /**
      * @return transaction id
      */
+    @Override
     public long getTransactionId() {
         return transactionId;
+    }
+
+    /**
+     * @return return branch id (null if this is the global transaction)
+     */
+    public Long getBranchId() {
+        return branchId;
     }
 
     @Override
@@ -99,46 +94,6 @@ public final class JtaXid implements Xid {
     @Override
     public byte[] getBranchQualifier() {
         return branchQualifier;
-    }
-
-    /**
-     * Create a branch XID for this global transaction id.
-     * @return a branch XID (using a new branch id)
-     */
-    public JtaXid createBranchXid() {
-        assert branchId == null;
-        return new JtaXid(this.transactionManager, this.transactionId, branchSequence.incrementAndGet());
-    }
-
-    /**
-     * Filter the given list of XID's to retrieve the XID's for this transaction manager.
-     * @param xids list of XID's
-     * @param transactionManager transaction manager unique name
-     * @return list of XID's that this transaction manager should recover
-     */
-    public static List<JtaXid> filterRecoveryXids(final Xid[] xids, final String transactionManager) {
-        final List<JtaXid> result = new ArrayList<>();
-        final byte[] globalTransactionId = createGlobalTransactionId(transactionManager, 0);
-
-        for (final Xid xid : xids) {
-            // Format should be the same,
-            // global transaction ID should have the same transaction manager and
-            // branch qualifier should contain a branch id (long)
-            if (SIMPLE_JTA_FORMAT == xid.getFormatId()
-                    && globalTransactionIdMatches(globalTransactionId, xid.getGlobalTransactionId())
-                    && xid.getBranchQualifier().length == 8
-                    ) {
-                final ByteBuffer globalBuffer = ByteBuffer.wrap(xid.getGlobalTransactionId());
-                final long transactionId = globalBuffer.getLong(56);
-
-                final ByteBuffer branchBuffer = ByteBuffer.wrap(xid.getBranchQualifier());
-                final long branchId = branchBuffer.getLong();
-
-                result.add(new JtaXid(transactionManager, transactionId, branchId));
-            }
-        }
-
-        return result;
     }
 
     private static boolean globalTransactionIdMatches(final byte[] partial, final byte[] toValidate) {
@@ -161,10 +116,10 @@ public final class JtaXid implements Xid {
         if (this == o) {
             return true;
         }
-        if (o == null || getClass() != o.getClass()) {
+        if (!(o instanceof BaseJtaXid)) {
             return false;
         }
-        final JtaXid jtaXid = (JtaXid) o;
+        final BaseJtaXid jtaXid = (BaseJtaXid) o;
         return transactionId == jtaXid.transactionId &&
                 Objects.equals(transactionManager, jtaXid.transactionManager) &&
                 Objects.equals(branchId, jtaXid.branchId);

@@ -26,7 +26,6 @@ final class JdbcHelper {
     }
 
     <T> T doInConnection(final JdbcFunction<T> returnable) throws JtaTransactionStoreException {
-        LOGGER.info("doInConnection: {}", returnable);
         synchronized (connection) {
             try {
                 T result = returnable.apply(connection);

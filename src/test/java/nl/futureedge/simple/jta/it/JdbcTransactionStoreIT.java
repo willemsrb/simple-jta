@@ -9,11 +9,12 @@ import java.sql.SQLException;
 import java.util.Properties;
 import javax.sql.DataSource;
 import javax.transaction.xa.XAException;
-import nl.futureedge.simple.jta.JtaXid;
 import nl.futureedge.simple.jta.ReflectionTestUtils;
 import nl.futureedge.simple.jta.store.impl.TransactionStatus;
 import nl.futureedge.simple.jta.store.jdbc.JdbcTransactionStore;
 import nl.futureedge.simple.jta.store.jdbc.sql.HsqldbSqlTemplate;
+import nl.futureedge.simple.jta.xid.BranchJtaXid;
+import nl.futureedge.simple.jta.xid.GlobalJtaXid;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -158,74 +159,74 @@ public class JdbcTransactionStoreIT {
     public void testGlobal() throws Exception {
         long transactionId1 = subject.nextTransactionId();
         LOGGER.debug("Transaction ID (1): " + transactionId1);
-        final JtaXid xid1 = new JtaXid("test", transactionId1);
+        final GlobalJtaXid xid1 = new GlobalJtaXid("test", transactionId1);
 
         long transactionId2 = subject.nextTransactionId();
         LOGGER.debug("Transaction ID (2): " + transactionId2);
-        final JtaXid xid2 = new JtaXid("test", transactionId2);
+        final GlobalJtaXid xid2 = new GlobalJtaXid("test", transactionId2);
 
         // Empty
         Assert.assertEquals(null, selectStatus(transactionId1));
         Assert.assertEquals(null, selectStatus(transactionId2));
-        Assert.assertFalse(subject.isCommitting(xid1));
-        Assert.assertFalse(subject.isCommitting(xid2));
+        Assert.assertFalse(subject.isCommitting(xid1.createBranchXid()));
+        Assert.assertFalse(subject.isCommitting(xid2.createBranchXid()));
 
         subject.active(xid1);
         Assert.assertEquals("ACTIVE", selectStatus(transactionId1));
         Assert.assertEquals(null, selectStatus(transactionId2));
-        Assert.assertFalse(subject.isCommitting(xid1));
-        Assert.assertFalse(subject.isCommitting(xid2));
+        Assert.assertFalse(subject.isCommitting(xid1.createBranchXid()));
+        Assert.assertFalse(subject.isCommitting(xid2.createBranchXid()));
 
         subject.preparing(xid1);
         Assert.assertEquals("PREPARING", selectStatus(transactionId1));
         Assert.assertEquals(null, selectStatus(transactionId2));
-        Assert.assertFalse(subject.isCommitting(xid1));
-        Assert.assertFalse(subject.isCommitting(xid2));
+        Assert.assertFalse(subject.isCommitting(xid1.createBranchXid()));
+        Assert.assertFalse(subject.isCommitting(xid2.createBranchXid()));
 
         subject.prepared(xid1);
         Assert.assertEquals("PREPARED", selectStatus(transactionId1));
         Assert.assertEquals(null, selectStatus(transactionId2));
-        Assert.assertFalse(subject.isCommitting(xid1));
-        Assert.assertFalse(subject.isCommitting(xid2));
+        Assert.assertFalse(subject.isCommitting(xid1.createBranchXid()));
+        Assert.assertFalse(subject.isCommitting(xid2.createBranchXid()));
 
         subject.active(xid2);
         Assert.assertEquals("PREPARED", selectStatus(transactionId1));
         Assert.assertEquals("ACTIVE", selectStatus(transactionId2));
-        Assert.assertFalse(subject.isCommitting(xid1));
-        Assert.assertFalse(subject.isCommitting(xid2));
+        Assert.assertFalse(subject.isCommitting(xid1.createBranchXid()));
+        Assert.assertFalse(subject.isCommitting(xid2.createBranchXid()));
 
         subject.rollingBack(xid2);
         Assert.assertEquals("PREPARED", selectStatus(transactionId1));
         Assert.assertEquals("ROLLING_BACK", selectStatus(transactionId2));
-        Assert.assertFalse(subject.isCommitting(xid1));
-        Assert.assertFalse(subject.isCommitting(xid2));
+        Assert.assertFalse(subject.isCommitting(xid1.createBranchXid()));
+        Assert.assertFalse(subject.isCommitting(xid2.createBranchXid()));
 
         subject.rolledBack(xid2);
         Assert.assertEquals("PREPARED", selectStatus(transactionId1));
         Assert.assertEquals(null, selectStatus(transactionId2));
-        Assert.assertFalse(subject.isCommitting(xid1));
-        Assert.assertFalse(subject.isCommitting(xid2));
+        Assert.assertFalse(subject.isCommitting(xid1.createBranchXid()));
+        Assert.assertFalse(subject.isCommitting(xid2.createBranchXid()));
 
         subject.committing(xid1);
         Assert.assertEquals("COMMITTING", selectStatus(transactionId1));
         Assert.assertEquals(null, selectStatus(transactionId2));
-        Assert.assertTrue(subject.isCommitting(xid1));
-        Assert.assertFalse(subject.isCommitting(xid2));
+        Assert.assertTrue(subject.isCommitting(xid1.createBranchXid()));
+        Assert.assertFalse(subject.isCommitting(xid2.createBranchXid()));
 
         debugTables();
 
         subject.committed(xid1);
         Assert.assertEquals(null, selectStatus(transactionId1));
         Assert.assertEquals(null, selectStatus(transactionId2));
-        Assert.assertFalse(subject.isCommitting(xid1));
-        Assert.assertFalse(subject.isCommitting(xid2));
+        Assert.assertFalse(subject.isCommitting(xid1.createBranchXid()));
+        Assert.assertFalse(subject.isCommitting(xid2.createBranchXid()));
     }
 
     @Test
     public void testCommitResource() throws Exception {
         long transactionId = subject.nextTransactionId();
-        final JtaXid globalXid = new JtaXid("test", transactionId);
-        final JtaXid branchXid = globalXid.createBranchXid();
+        final GlobalJtaXid globalXid = new GlobalJtaXid("test", transactionId);
+        final BranchJtaXid branchXid = globalXid.createBranchXid();
 
         final String resource1 = "resourceOne";
         final String resource2 = "resourceTwo";
@@ -284,8 +285,8 @@ public class JdbcTransactionStoreIT {
     @Test
     public void testRollbackResource() throws Exception {
         long transactionId = subject.nextTransactionId();
-        final JtaXid globalXid = new JtaXid("test", transactionId);
-        final JtaXid branchXid = globalXid.createBranchXid();
+        final GlobalJtaXid globalXid = new GlobalJtaXid("test", transactionId);
+        final BranchJtaXid branchXid = globalXid.createBranchXid();
 
         final String resource1 = "resourceOne";
         final String resource2 = "resourceTwo";
@@ -338,6 +339,80 @@ public class JdbcTransactionStoreIT {
         Assert.assertEquals("ROLLBACK_FAILED", selectStatus(transactionId, resource2));
 
         debugTables();
+    }
+
+    @Test
+    public void cleanup() throws Exception {
+        long transactionId1 = subject.nextTransactionId();
+        final GlobalJtaXid globalXid1 = new GlobalJtaXid("test", transactionId1);
+        final BranchJtaXid branchXid1a = globalXid1.createBranchXid();
+        final BranchJtaXid branchXid1b = globalXid1.createBranchXid();
+
+        long transactionId2 = subject.nextTransactionId();
+        final GlobalJtaXid globalXid2 = new GlobalJtaXid("test", transactionId2);
+        final BranchJtaXid branchXid2a = globalXid2.createBranchXid();
+        final BranchJtaXid branchXid2b = globalXid2.createBranchXid();
+
+        long transactionId3 = subject.nextTransactionId();
+        final GlobalJtaXid globalXid3 = new GlobalJtaXid("test", transactionId3);
+        final BranchJtaXid branchXid3 = globalXid3.createBranchXid();
+
+        long transactionId4 = subject.nextTransactionId();
+        final GlobalJtaXid globalXid4 = new GlobalJtaXid("test", transactionId4);
+        final BranchJtaXid branchXid4a = globalXid4.createBranchXid();
+        final BranchJtaXid branchXid4b = globalXid4.createBranchXid();
+
+        subject.active(globalXid1);
+        subject.active(branchXid1a, "resource");
+        subject.rollingBack(branchXid1b, "resource");
+        Assert.assertEquals("ACTIVE", selectStatus(transactionId1));
+
+        subject.preparing(globalXid2);
+        subject.prepared(branchXid2a, "resource");
+        subject.committed(branchXid2b, "resource");
+        Assert.assertEquals("PREPARING", selectStatus(transactionId2));
+
+        subject.committing(globalXid3);
+        subject.prepared(branchXid3, "resource");
+        Assert.assertEquals("COMMITTING", selectStatus(transactionId3));
+
+        subject.rollingBack(globalXid4);
+        subject.prepared(branchXid4a, "resource");
+        subject.rolledBack(branchXid4b, "resource");
+        Assert.assertEquals("ROLLING_BACK", selectStatus(transactionId4));
+
+        LOGGER.debug("BEFORE(1)");
+        debugTables();
+        subject.cleanup();
+        LOGGER.debug("AFTER(1)");
+        debugTables();
+
+        Assert.assertEquals("ACTIVE", selectStatus(transactionId1));
+        Assert.assertEquals("PREPARING", selectStatus(transactionId2));
+        Assert.assertEquals("COMMITTING", selectStatus(transactionId3));
+        Assert.assertEquals("ROLLING_BACK", selectStatus(transactionId4));
+
+        subject.rolledBack(branchXid1b, "resource");
+        LOGGER.debug("BEFORE(2)");
+        debugTables();
+        subject.cleanup();
+        LOGGER.debug("AFTER(2)");
+        Assert.assertEquals(null, selectStatus(transactionId1));
+        Assert.assertEquals("PREPARING", selectStatus(transactionId2));
+        Assert.assertEquals("COMMITTING", selectStatus(transactionId3));
+        Assert.assertEquals("ROLLING_BACK", selectStatus(transactionId4));
+
+        subject.rolledBack(branchXid2a, "resource");
+        subject.committed(branchXid3, "resource");
+        subject.rolledBack(branchXid4a, "resource");
+        LOGGER.debug("BEFORE(3)");
+        debugTables();
+        subject.cleanup();
+        LOGGER.debug("AFTER(3)");
+        Assert.assertEquals(null, selectStatus(transactionId1));
+        Assert.assertEquals(null, selectStatus(transactionId2));
+        Assert.assertEquals(null, selectStatus(transactionId3));
+        Assert.assertEquals(null, selectStatus(transactionId4));
     }
 
 }

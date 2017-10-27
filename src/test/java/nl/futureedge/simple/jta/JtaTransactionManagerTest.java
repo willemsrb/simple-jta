@@ -128,7 +128,6 @@ public class JtaTransactionManagerTest {
 
         transactionManager.begin();
         JtaTransaction transaction = transactionManager.getTransaction();
-        JtaXid globalXid = ReflectionTestUtils.getField(transaction, "globalXid");
         transaction.enlistResource(new XAResourceAdapter("resourceOne", true, resourceOne));
         transaction.enlistResource(new XAResourceAdapter("resourceTwo", true, resourceTwo));
 

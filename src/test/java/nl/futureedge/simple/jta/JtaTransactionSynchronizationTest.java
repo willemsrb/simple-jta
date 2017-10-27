@@ -8,6 +8,8 @@ import javax.transaction.xa.XAResource;
 import nl.futureedge.simple.jta.store.JtaTransactionStore;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 import nl.futureedge.simple.jta.xa.XAResourceAdapter;
+import nl.futureedge.simple.jta.xid.BranchJtaXid;
+import nl.futureedge.simple.jta.xid.GlobalJtaXid;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -19,13 +21,13 @@ import org.mockito.Mockito;
 public class JtaTransactionSynchronizationTest {
 
     private XAResource resourceOne;
-    private JtaXid branchXidOne;
+    private BranchJtaXid branchXidOne;
     private Synchronization synchronization;
 
     private JtaTransactionStore transactionStore;
     private JtaTransactionManager transactionManager;
     private JtaTransaction transaction;
-    private JtaXid globalXid;
+    private GlobalJtaXid globalXid;
 
     @Before
     public void setup() throws Exception {
@@ -56,10 +58,10 @@ public class JtaTransactionSynchronizationTest {
         ordered.verify(transactionStore).active(globalXid);
 
         // Enlist resource
-        ordered.verify(transactionStore).active(globalXid, "resourceOne");
-        final ArgumentCaptor<JtaXid> branchXidOneCaptor = ArgumentCaptor.forClass(JtaXid.class);
-        ordered.verify(resourceOne).start(branchXidOneCaptor.capture(), Mockito.eq(XAResource.TMNOFLAGS));
+        final ArgumentCaptor<BranchJtaXid> branchXidOneCaptor = ArgumentCaptor.forClass(BranchJtaXid.class);
+        ordered.verify(transactionStore).active(branchXidOneCaptor.capture(),Mockito.eq( "resourceOne"));
         branchXidOne = branchXidOneCaptor.getValue();
+        ordered.verify(resourceOne).start(branchXidOne, XAResource.TMNOFLAGS);
     }
 
     @After
@@ -79,17 +81,17 @@ public class JtaTransactionSynchronizationTest {
 
         // Commit (prepare)
         ordered.verify(transactionStore).preparing(globalXid);
-        ordered.verify(transactionStore).preparing(globalXid, "resourceOne");
+        ordered.verify(transactionStore).preparing(branchXidOne, "resourceOne");
         ordered.verify(resourceOne).end(branchXidOne, XAResource.TMSUCCESS);
         ordered.verify(resourceOne).prepare(branchXidOne);
-        ordered.verify(transactionStore).prepared(globalXid, "resourceOne");
+        ordered.verify(transactionStore).prepared(branchXidOne, "resourceOne");
         ordered.verify(transactionStore).prepared(globalXid);
 
         // Commit (commit)
         ordered.verify(transactionStore).committing(globalXid);
-        ordered.verify(transactionStore).committing(globalXid, "resourceOne");
+        ordered.verify(transactionStore).committing(branchXidOne, "resourceOne");
         ordered.verify(resourceOne).commit(branchXidOne, false);
-        ordered.verify(transactionStore).committed(globalXid, "resourceOne");
+        ordered.verify(transactionStore).committed(branchXidOne, "resourceOne");
         ordered.verify(transactionStore).committed(globalXid);
 
         // After completion
@@ -116,15 +118,15 @@ public class JtaTransactionSynchronizationTest {
 
         // Commit (prepare)
         ordered.verify(transactionStore).preparing(globalXid);
-        ordered.verify(transactionStore).preparing(globalXid, "resourceOne");
+        ordered.verify(transactionStore).preparing(branchXidOne, "resourceOne");
         ordered.verify(resourceOne).end(branchXidOne, XAResource.TMSUCCESS);
         ordered.verify(resourceOne).prepare(branchXidOne);
 
         // Rollback
         ordered.verify(transactionStore).rollingBack(globalXid);
-        ordered.verify(transactionStore).rollingBack(globalXid, "resourceOne");
+        ordered.verify(transactionStore).rollingBack(branchXidOne, "resourceOne");
         ordered.verify(resourceOne).rollback(branchXidOne);
-        ordered.verify(transactionStore).rolledBack(globalXid, "resourceOne");
+        ordered.verify(transactionStore).rolledBack(branchXidOne, "resourceOne");
         ordered.verify(transactionStore).rolledBack(globalXid);
 
         // After completion
@@ -151,10 +153,10 @@ public class JtaTransactionSynchronizationTest {
 
         // Rollback
         ordered.verify(transactionStore).rollingBack(globalXid);
-        ordered.verify(transactionStore).rollingBack(globalXid, "resourceOne");
+        ordered.verify(transactionStore).rollingBack(branchXidOne, "resourceOne");
         ordered.verify(resourceOne).end(branchXidOne, XAResource.TMFAIL);
         ordered.verify(resourceOne).rollback(branchXidOne);
-        ordered.verify(transactionStore).rolledBack(globalXid, "resourceOne");
+        ordered.verify(transactionStore).rolledBack(branchXidOne, "resourceOne");
         ordered.verify(transactionStore).rolledBack(globalXid);
 
         // After completion

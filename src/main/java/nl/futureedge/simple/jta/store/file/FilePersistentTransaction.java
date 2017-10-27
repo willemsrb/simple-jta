@@ -8,10 +8,10 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
-import nl.futureedge.simple.jta.JtaXid;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 import nl.futureedge.simple.jta.store.impl.PersistentTransaction;
 import nl.futureedge.simple.jta.store.impl.TransactionStatus;
+import nl.futureedge.simple.jta.xid.JtaXid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,20 +67,26 @@ final class FilePersistentTransaction implements PersistentTransaction {
 
     @Override
     public void save(final TransactionStatus status) throws JtaTransactionStoreException {
-        save(status, null, null);
+        write(status, null, null, null);
         this.status = status;
     }
 
     @Override
-    public void save(final TransactionStatus status, final String resourceManager) throws JtaTransactionStoreException {
-        save(status, resourceManager, null);
+    public void save(final TransactionStatus status, long branchId, final String resourceManager) throws JtaTransactionStoreException {
+        write(status, null, resourceManager, null);
     }
 
     @Override
-    public void save(TransactionStatus status, String resourceManager, Exception cause) throws JtaTransactionStoreException {
+    public void save(TransactionStatus status, long branchId, String resourceManager, Exception cause) throws JtaTransactionStoreException {
+        write(status, branchId, resourceManager, cause);
+    }
+
+    private void write(TransactionStatus status, Long branchId, String resourceManager, Exception cause) throws JtaTransactionStoreException {
         try {
             if (resourceManager != null) {
                 writer.write(resourceManager);
+                writer.write(RESOURCE_MANAGER_SEPARATOR);
+                writer.write(Long.toString(branchId));
                 writer.write(RESOURCE_MANAGER_SEPARATOR);
             }
             writer.write(status.getText());

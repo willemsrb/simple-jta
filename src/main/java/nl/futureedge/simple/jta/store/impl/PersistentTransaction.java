@@ -6,9 +6,9 @@ public interface PersistentTransaction {
 
     void save(TransactionStatus status) throws JtaTransactionStoreException;
 
-    void save(TransactionStatus status, String resourceManager) throws JtaTransactionStoreException;
+    void save(TransactionStatus status, long branchId, String resourceManager) throws JtaTransactionStoreException;
 
-    void save(TransactionStatus status, String resourceManager, Exception cause) throws JtaTransactionStoreException;
+    void save(TransactionStatus status, long branchId, String resourceManager, Exception cause) throws JtaTransactionStoreException;
 
     void remove() throws JtaTransactionStoreException;
 

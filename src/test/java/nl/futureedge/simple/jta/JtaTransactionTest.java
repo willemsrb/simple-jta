@@ -8,6 +8,8 @@ import javax.transaction.xa.XAResource;
 import nl.futureedge.simple.jta.store.JtaTransactionStore;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 import nl.futureedge.simple.jta.xa.XAResourceAdapter;
+import nl.futureedge.simple.jta.xid.BranchJtaXid;
+import nl.futureedge.simple.jta.xid.GlobalJtaXid;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -24,7 +26,7 @@ public class JtaTransactionTest {
     private JtaTransactionStore transactionStore;
     private JtaTransactionManager transactionManager;
     private JtaTransaction transaction;
-    private JtaXid globalXid;
+    private GlobalJtaXid globalXid;
 
     @Before
     public void setup() throws Exception {
@@ -50,7 +52,7 @@ public class JtaTransactionTest {
 
     @Test
     public void testActiveFail() throws Exception {
-        JtaXid xid2 = new JtaXid("Test", 2L);
+        GlobalJtaXid xid2 = new GlobalJtaXid("Test", 2L);
         Mockito.doThrow(new JtaTransactionStoreException("Test")).when(transactionStore).active(xid2);
         try {
             new JtaTransaction(xid2, null, transactionStore);
@@ -81,23 +83,23 @@ public class JtaTransactionTest {
         ordered.verify(transactionStore).active(globalXid);
 
         // Enlist resource
-        ordered.verify(transactionStore).active(globalXid, "resourceOne");
-        final ArgumentCaptor<JtaXid> branchXidOneCaptor = ArgumentCaptor.forClass(JtaXid.class);
-        ordered.verify(resourceOne).start(branchXidOneCaptor.capture(), Mockito.eq(XAResource.TMNOFLAGS));
-        final JtaXid branchXidOne = branchXidOneCaptor.getValue();
+        final ArgumentCaptor<BranchJtaXid> branchXidOneCaptor = ArgumentCaptor.forClass(BranchJtaXid.class);
+        ordered.verify(transactionStore).active(branchXidOneCaptor.capture(), Mockito.eq("resourceOne"));
+        final BranchJtaXid branchXidOne = branchXidOneCaptor.getValue();
+        ordered.verify(resourceOne).start(branchXidOne, XAResource.TMNOFLAGS);
 
         ordered.verify(resourceOne).isSameRM(resourceTwo);
-        ordered.verify(transactionStore).active(globalXid, "resourceTwo");
-        final ArgumentCaptor<JtaXid> branchXidTwoCaptor = ArgumentCaptor.forClass(JtaXid.class);
-        ordered.verify(resourceTwo).start(branchXidTwoCaptor.capture(), Mockito.eq(XAResource.TMNOFLAGS));
-        final JtaXid branchXidTwo = branchXidTwoCaptor.getValue();
+        final ArgumentCaptor<BranchJtaXid> branchXidTwoCaptor = ArgumentCaptor.forClass(BranchJtaXid.class);
+        ordered.verify(transactionStore).active(branchXidTwoCaptor.capture(), Mockito.eq("resourceTwo"));
+        final BranchJtaXid branchXidTwo = branchXidTwoCaptor.getValue();
+        ordered.verify(resourceTwo).start(branchXidTwo, XAResource.TMNOFLAGS);
 
         ordered.verify(resourceOne).isSameRM(resourceThree);
         ordered.verify(resourceTwo).isSameRM(resourceThree);
-        ordered.verify(transactionStore).active(globalXid, "resourceThree");
-        final ArgumentCaptor<JtaXid> branchXidThreeCaptor = ArgumentCaptor.forClass(JtaXid.class);
-        ordered.verify(resourceThree).start(branchXidThreeCaptor.capture(), Mockito.eq(XAResource.TMNOFLAGS));
-        final JtaXid branchXidThree = branchXidThreeCaptor.getValue();
+        final ArgumentCaptor<BranchJtaXid> branchXidThreeCaptor = ArgumentCaptor.forClass(BranchJtaXid.class);
+        ordered.verify(transactionStore).active(branchXidThreeCaptor.capture(), Mockito.eq("resourceThree"));
+        final BranchJtaXid branchXidThree = branchXidThreeCaptor.getValue();
+        ordered.verify(resourceThree).start(branchXidThree, XAResource.TMNOFLAGS);
 
         ordered.verify(resourceOne).isSameRM(resourceFour);
         ordered.verify(resourceTwo).isSameRM(resourceFour);
@@ -106,28 +108,28 @@ public class JtaTransactionTest {
 
         // Commit (prepare)
         ordered.verify(transactionStore).preparing(globalXid);
-        ordered.verify(transactionStore).preparing(globalXid, "resourceOne");
+        ordered.verify(transactionStore).preparing(branchXidOne, "resourceOne");
         ordered.verify(resourceOne).end(branchXidOne, XAResource.TMSUCCESS);
         ordered.verify(resourceOne).prepare(Mockito.any());
-        ordered.verify(transactionStore).prepared(globalXid, "resourceOne");
-        ordered.verify(transactionStore).preparing(globalXid, "resourceTwo");
+        ordered.verify(transactionStore).prepared(branchXidOne, "resourceOne");
+        ordered.verify(transactionStore).preparing(branchXidTwo, "resourceTwo");
         ordered.verify(resourceTwo).end(branchXidTwo, XAResource.TMSUCCESS);
         ordered.verify(resourceTwo).prepare(Mockito.any());
-        ordered.verify(transactionStore).committed(globalXid, "resourceTwo");
-        ordered.verify(transactionStore).preparing(globalXid, "resourceThree");
+        ordered.verify(transactionStore).committed(branchXidTwo, "resourceTwo");
+        ordered.verify(transactionStore).preparing(branchXidThree, "resourceThree");
         ordered.verify(resourceThree).end(branchXidThree, XAResource.TMSUCCESS);
         ordered.verify(resourceThree).prepare(Mockito.any());
-        ordered.verify(transactionStore).prepared(globalXid, "resourceThree");
+        ordered.verify(transactionStore).prepared(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).prepared(globalXid);
 
         // Commit (commit)
         ordered.verify(transactionStore).committing(globalXid);
-        ordered.verify(transactionStore).committing(globalXid, "resourceOne");
+        ordered.verify(transactionStore).committing(branchXidOne, "resourceOne");
         ordered.verify(resourceOne).commit(branchXidOne, false);
-        ordered.verify(transactionStore).committed(globalXid, "resourceOne");
-        ordered.verify(transactionStore).committing(globalXid, "resourceThree");
+        ordered.verify(transactionStore).committed(branchXidOne, "resourceOne");
+        ordered.verify(transactionStore).committing(branchXidThree, "resourceThree");
         ordered.verify(resourceThree).commit(branchXidThree, false);
-        ordered.verify(transactionStore).committed(globalXid, "resourceThree");
+        ordered.verify(transactionStore).committed(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).committed(globalXid);
 
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree, resourceFour);
@@ -155,46 +157,46 @@ public class JtaTransactionTest {
         ordered.verify(transactionStore).active(globalXid);
 
         // Enlist resource
-        ordered.verify(transactionStore).active(globalXid, "resourceOne");
-        final ArgumentCaptor<JtaXid> branchXidOneCaptor = ArgumentCaptor.forClass(JtaXid.class);
-        ordered.verify(resourceOne).start(branchXidOneCaptor.capture(), Mockito.eq(XAResource.TMNOFLAGS));
-        final JtaXid branchXidOne = branchXidOneCaptor.getValue();
+        final ArgumentCaptor<BranchJtaXid> branchXidOneCaptor = ArgumentCaptor.forClass(BranchJtaXid.class);
+        ordered.verify(transactionStore).active(branchXidOneCaptor.capture(), Mockito.eq("resourceOne"));
+        final BranchJtaXid branchXidOne = branchXidOneCaptor.getValue();
+        ordered.verify(resourceOne).start(branchXidOne, XAResource.TMNOFLAGS);
 
         ordered.verify(resourceOne).isSameRM(resourceTwo);
-        ordered.verify(transactionStore).active(globalXid, "resourceTwo");
-        final ArgumentCaptor<JtaXid> branchXidTwoCaptor = ArgumentCaptor.forClass(JtaXid.class);
-        ordered.verify(resourceTwo).start(branchXidTwoCaptor.capture(), Mockito.eq(XAResource.TMNOFLAGS));
-        final JtaXid branchXidTwo = branchXidTwoCaptor.getValue();
+        final ArgumentCaptor<BranchJtaXid> branchXidTwoCaptor = ArgumentCaptor.forClass(BranchJtaXid.class);
+        ordered.verify(transactionStore).active(branchXidTwoCaptor.capture(), Mockito.eq("resourceTwo"));
+        final BranchJtaXid branchXidTwo = branchXidTwoCaptor.getValue();
+        ordered.verify(resourceTwo).start(branchXidTwo, XAResource.TMNOFLAGS);
 
         ordered.verify(resourceOne).isSameRM(resourceThree);
         ordered.verify(resourceTwo).isSameRM(resourceThree);
-        ordered.verify(transactionStore).active(globalXid, "resourceThree");
-        final ArgumentCaptor<JtaXid> branchXidThreeCaptor = ArgumentCaptor.forClass(JtaXid.class);
-        ordered.verify(resourceThree).start(branchXidThreeCaptor.capture(), Mockito.eq(XAResource.TMNOFLAGS));
-        final JtaXid branchXidThree = branchXidThreeCaptor.getValue();
+        final ArgumentCaptor<BranchJtaXid> branchXidThreeCaptor = ArgumentCaptor.forClass(BranchJtaXid.class);
+        ordered.verify(transactionStore).active(branchXidThreeCaptor.capture(), Mockito.eq("resourceThree"));
+        final BranchJtaXid branchXidThree = branchXidThreeCaptor.getValue();
+        ordered.verify(resourceThree).start(branchXidThree, XAResource.TMNOFLAGS);
 
         // Commit (prepare)
         ordered.verify(transactionStore).preparing(globalXid);
-        ordered.verify(transactionStore).preparing(globalXid, "resourceOne");
+        ordered.verify(transactionStore).preparing(branchXidOne, "resourceOne");
         ordered.verify(resourceOne).end(branchXidOne, XAResource.TMSUCCESS);
         ordered.verify(resourceOne).prepare(Mockito.any());
-        ordered.verify(transactionStore).prepared(globalXid, "resourceOne");
-        ordered.verify(transactionStore).preparing(globalXid, "resourceTwo");
+        ordered.verify(transactionStore).prepared(branchXidOne, "resourceOne");
+        ordered.verify(transactionStore).preparing(branchXidTwo, "resourceTwo");
         ordered.verify(resourceTwo).end(branchXidTwo, XAResource.TMSUCCESS);
         ordered.verify(resourceTwo).prepare(Mockito.any());
 
         // Rollback
         ordered.verify(transactionStore).rollingBack(globalXid);
-        ordered.verify(transactionStore).rollingBack(globalXid, "resourceOne");
+        ordered.verify(transactionStore).rollingBack(branchXidOne, "resourceOne");
         ordered.verify(resourceOne).rollback(branchXidOne);
-        ordered.verify(transactionStore).rolledBack(globalXid, "resourceOne");
-        ordered.verify(transactionStore).rollingBack(globalXid, "resourceTwo");
+        ordered.verify(transactionStore).rolledBack(branchXidOne, "resourceOne");
+        ordered.verify(transactionStore).rollingBack(branchXidTwo, "resourceTwo");
         ordered.verify(resourceTwo).rollback(branchXidTwo);
-        ordered.verify(transactionStore).rolledBack(globalXid, "resourceTwo");
-        ordered.verify(transactionStore).rollingBack(globalXid, "resourceThree");
+        ordered.verify(transactionStore).rolledBack(branchXidTwo, "resourceTwo");
+        ordered.verify(transactionStore).rollingBack(branchXidThree, "resourceThree");
         ordered.verify(resourceThree).end(branchXidThree, XAResource.TMFAIL);
         ordered.verify(resourceThree).rollback(branchXidThree);
-        ordered.verify(transactionStore).rolledBack(globalXid, "resourceThree");
+        ordered.verify(transactionStore).rolledBack(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).rolledBack(globalXid);
 
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
@@ -237,23 +239,23 @@ public class JtaTransactionTest {
         ordered.verify(transactionStore).active(globalXid);
 
         // Enlist resource
-        ordered.verify(transactionStore).active(globalXid, "resourceOne");
-        final ArgumentCaptor<JtaXid> branchXidOneCaptor = ArgumentCaptor.forClass(JtaXid.class);
-        ordered.verify(resourceOne).start(branchXidOneCaptor.capture(), Mockito.eq(XAResource.TMNOFLAGS));
-        final JtaXid branchXidOne = branchXidOneCaptor.getValue();
+        final ArgumentCaptor<BranchJtaXid> branchXidOneCaptor = ArgumentCaptor.forClass(BranchJtaXid.class);
+        ordered.verify(transactionStore).active(branchXidOneCaptor.capture(), Mockito.eq("resourceOne"));
+        final BranchJtaXid branchXidOne = branchXidOneCaptor.getValue();
+        ordered.verify(resourceOne).start(branchXidOne, XAResource.TMNOFLAGS);
 
         ordered.verify(resourceOne).isSameRM(resourceTwo);
-        ordered.verify(transactionStore).active(globalXid, "resourceTwo");
-        final ArgumentCaptor<JtaXid> branchXidTwoCaptor = ArgumentCaptor.forClass(JtaXid.class);
-        ordered.verify(resourceTwo).start(branchXidTwoCaptor.capture(), Mockito.eq(XAResource.TMNOFLAGS));
-        final JtaXid branchXidTwo = branchXidTwoCaptor.getValue();
+        final ArgumentCaptor<BranchJtaXid> branchXidTwoCaptor = ArgumentCaptor.forClass(BranchJtaXid.class);
+        ordered.verify(transactionStore).active(branchXidTwoCaptor.capture(), Mockito.eq("resourceTwo"));
+        final BranchJtaXid branchXidTwo = branchXidTwoCaptor.getValue();
+        ordered.verify(resourceTwo).start(branchXidTwo, XAResource.TMNOFLAGS);
 
         ordered.verify(resourceOne).isSameRM(resourceThree);
         ordered.verify(resourceTwo).isSameRM(resourceThree);
-        ordered.verify(transactionStore).active(globalXid, "resourceThree");
-        final ArgumentCaptor<JtaXid> branchXidThreeCaptor = ArgumentCaptor.forClass(JtaXid.class);
-        ordered.verify(resourceThree).start(branchXidThreeCaptor.capture(), Mockito.eq(XAResource.TMNOFLAGS));
-        final JtaXid branchXidThree = branchXidThreeCaptor.getValue();
+        final ArgumentCaptor<BranchJtaXid> branchXidThreeCaptor = ArgumentCaptor.forClass(BranchJtaXid.class);
+        ordered.verify(transactionStore).active(branchXidThreeCaptor.capture(), Mockito.eq("resourceThree"));
+        final BranchJtaXid branchXidThree = branchXidThreeCaptor.getValue();
+        ordered.verify(resourceThree).start(branchXidThree, XAResource.TMNOFLAGS);
 
         // Set timeout
         ordered.verify(resourceOne).setTransactionTimeout(45);
@@ -261,18 +263,18 @@ public class JtaTransactionTest {
 
         // Rollback
         ordered.verify(transactionStore).rollingBack(globalXid);
-        ordered.verify(transactionStore).rollingBack(globalXid, "resourceOne");
+        ordered.verify(transactionStore).rollingBack(branchXidOne, "resourceOne");
         ordered.verify(resourceOne).end(branchXidOne, XAResource.TMFAIL);
         ordered.verify(resourceOne).rollback(branchXidOne);
-        ordered.verify(transactionStore).rolledBack(globalXid, "resourceOne");
-        ordered.verify(transactionStore).rollingBack(globalXid, "resourceTwo");
+        ordered.verify(transactionStore).rolledBack(branchXidOne, "resourceOne");
+        ordered.verify(transactionStore).rollingBack(branchXidTwo, "resourceTwo");
         ordered.verify(resourceTwo).end(branchXidTwo, XAResource.TMFAIL);
         ordered.verify(resourceTwo).rollback(branchXidTwo);
-        ordered.verify(transactionStore).rolledBack(globalXid, "resourceTwo");
-        ordered.verify(transactionStore).rollingBack(globalXid, "resourceThree");
+        ordered.verify(transactionStore).rolledBack(branchXidTwo, "resourceTwo");
+        ordered.verify(transactionStore).rollingBack(branchXidThree, "resourceThree");
         ordered.verify(resourceThree).end(branchXidThree, XAResource.TMFAIL);
         ordered.verify(resourceThree).rollback(branchXidThree);
-        ordered.verify(transactionStore).rolledBack(globalXid, "resourceThree");
+        ordered.verify(transactionStore).rolledBack(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).rolledBack(globalXid);
 
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);

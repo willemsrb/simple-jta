@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import nl.futureedge.simple.jta.JtaXid;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 import nl.futureedge.simple.jta.store.impl.BaseTransactionStore;
 import nl.futureedge.simple.jta.store.impl.PersistentTransaction;
@@ -18,6 +17,7 @@ import nl.futureedge.simple.jta.store.impl.TransactionStatus;
 import nl.futureedge.simple.jta.store.jdbc.sql.DefaultSqlTemplate;
 import nl.futureedge.simple.jta.store.jdbc.sql.HsqldbSqlTemplate;
 import nl.futureedge.simple.jta.store.jdbc.sql.JdbcSqlTemplate;
+import nl.futureedge.simple.jta.xid.JtaXid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -115,16 +115,14 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
     /* ************************** */
 
     Map<TransactionStatus, List<TransactionStatus>> CLEANABLE = new EnumMap<TransactionStatus, List<TransactionStatus>>(TransactionStatus.class) {{
-        // ACTIVE; should only contain ACTIVE
-        put(TransactionStatus.ACTIVE, Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.ROLLING_BACK, TransactionStatus.ROLLED_BACK));
+        // ACTIVE; should only contain ACTIVE (and ROLLED_BACK from recovery)
+        put(TransactionStatus.ACTIVE, Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.ROLLED_BACK));
 
         // PREPARING/PREPARED; can be cleaned when PREPARED no longer exists (COMMITTING should not exist)
         put(TransactionStatus.PREPARING,
-                Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTED, TransactionStatus.ROLLING_BACK,
-                        TransactionStatus.ROLLED_BACK));
+                Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTED, TransactionStatus.ROLLED_BACK));
         put(TransactionStatus.PREPARED,
-                Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTED, TransactionStatus.ROLLING_BACK,
-                        TransactionStatus.ROLLED_BACK));
+                Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTED, TransactionStatus.ROLLED_BACK));
 
         // COMMITTING/COMMITTED; can only be cleaned when everything is COMMITTED!
         put(TransactionStatus.COMMITTING, Arrays.asList(TransactionStatus.COMMITTED));
@@ -134,11 +132,9 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
 
         // ROLLING_BACK/ROLLED_BACK; can be cleaned when PREPARED no longer exists
         put(TransactionStatus.ROLLING_BACK,
-                Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTING, TransactionStatus.COMMITTED,
-                        TransactionStatus.ROLLING_BACK, TransactionStatus.ROLLED_BACK));
+                Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTED, TransactionStatus.ROLLED_BACK));
         put(TransactionStatus.ROLLED_BACK,
-                Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTING, TransactionStatus.COMMITTED,
-                        TransactionStatus.ROLLING_BACK, TransactionStatus.ROLLED_BACK));
+                Arrays.asList(TransactionStatus.ACTIVE, TransactionStatus.PREPARING, TransactionStatus.COMMITTED, TransactionStatus.ROLLED_BACK));
 
         // Do not clean TransactionStatus.ROLLBACK_FAILED
     }};

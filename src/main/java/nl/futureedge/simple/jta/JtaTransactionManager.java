@@ -18,6 +18,8 @@ import javax.transaction.xa.XAResource;
 import nl.futureedge.simple.jta.store.JtaTransactionStore;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 import nl.futureedge.simple.jta.xa.XAResourceAdapter;
+import nl.futureedge.simple.jta.xid.BranchJtaXid;
+import nl.futureedge.simple.jta.xid.GlobalJtaXid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -101,7 +103,7 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
 
         final JtaTransaction result;
         try {
-            result = new JtaTransaction(new JtaXid(uniqueName, transactionStore.nextTransactionId()), timeoutInSeconds.get(), transactionStore);
+            result = new JtaTransaction(new GlobalJtaXid(uniqueName, transactionStore.nextTransactionId()), timeoutInSeconds.get(), transactionStore);
             result.registerSystemCallback(this);
         } catch (final JtaTransactionStoreException | IllegalStateException e) {
             throw systemException("Could not create new transaction", e);
@@ -192,14 +194,14 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
     public void recover(final XAResourceAdapter xaResource) throws SystemException {
         LOGGER.info("Starting recovery for {}", xaResource.getResourceManager());
         // Process XIDs for this transaction manager only (so unique name needs to be consistent)
-        final List<JtaXid> xids;
+        final List<BranchJtaXid> xids;
         try {
-            xids = JtaXid.filterRecoveryXids(xaResource.recover(XAResource.TMENDRSCAN), uniqueName);
+            xids = BranchJtaXid.filterRecoveryXids(xaResource.recover(XAResource.TMENDRSCAN), uniqueName);
         } catch (XAException e) {
             LOGGER.error("Could not retrieve XIDs for recovery from resource {}", xaResource.getResourceManager(), e);
             return;
         }
-        for (final JtaXid xid : xids) {
+        for (final BranchJtaXid xid : xids) {
             // Check if partial transaction should be committed
             final boolean committing;
             try {
@@ -227,7 +229,7 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
         }
     }
 
-    private void recoveryCommit(final XAResourceAdapter xaResource, final JtaXid xid) throws SystemException {
+    private void recoveryCommit(final XAResourceAdapter xaResource, final BranchJtaXid xid) throws SystemException {
         LOGGER.info("Committing partial transaction {}", xid);
         try {
             transactionStore.committing(xid, xaResource.getResourceManager());
@@ -250,11 +252,9 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
                 throw JtaExceptions.systemException("Could not write transaction log; recovery could not be logged! TRANSACTION SYSTEM IS NOW INCONSISTENT!", e2);
             }
         }
-
-
     }
 
-    private void recoveryRollback(final XAResourceAdapter xaResource, final JtaXid xid) throws SystemException {
+    private void recoveryRollback(final XAResourceAdapter xaResource, final BranchJtaXid xid) throws SystemException {
         try {
             LOGGER.info("Rolling back partial transaction {}", xid);
             transactionStore.rollingBack(xid, xaResource.getResourceManager());

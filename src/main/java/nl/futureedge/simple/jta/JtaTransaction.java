@@ -19,6 +19,8 @@ import javax.transaction.xa.XAResource;
 import nl.futureedge.simple.jta.store.JtaTransactionStore;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 import nl.futureedge.simple.jta.xa.XAResourceAdapter;
+import nl.futureedge.simple.jta.xid.BranchJtaXid;
+import nl.futureedge.simple.jta.xid.GlobalJtaXid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +33,7 @@ public final class JtaTransaction implements Transaction {
 
     private static final String COULD_NOT_WRITE_TRANSACTION_LOG = "Could not write transaction log";
 
-    private final JtaXid globalXid;
+    private final GlobalJtaXid globalXid;
     private final JtaTransactionStore transactionStore;
 
     private Integer timeoutInSeconds;
@@ -50,7 +52,7 @@ public final class JtaTransaction implements Transaction {
      * @param transactionStore transaction store
      * @throws SystemException when the transaction log could not be written
      */
-    JtaTransaction(final JtaXid xid, final Integer timeoutInSeconds, final JtaTransactionStore transactionStore) throws SystemException {
+    JtaTransaction(final GlobalJtaXid xid, final Integer timeoutInSeconds, final JtaTransactionStore transactionStore) throws SystemException {
         LOGGER.trace("JtaTransaction(xid={}, transactionStore={})", xid, transactionStore);
 
         this.globalXid = xid;
@@ -174,10 +176,10 @@ public final class JtaTransaction implements Transaction {
         }
 
         // Store
-        JtaXid branchXid = globalXid.createBranchXid();
+        BranchJtaXid branchXid = globalXid.createBranchXid();
         enlistedXaResources.add(new EnlistedXaResource(xaResource, branchXid));
         try {
-            transactionStore.active(globalXid, xaResource.getResourceManager());
+            transactionStore.active(branchXid, xaResource.getResourceManager());
         } catch (final JtaTransactionStoreException e) {
             throw systemException(COULD_NOT_WRITE_TRANSACTION_LOG, e);
         }
@@ -262,13 +264,13 @@ public final class JtaTransaction implements Transaction {
 
         for (final EnlistedXaResource enlistedXaResource : enlistedXaResources) {
             final XAResourceAdapter xaResource = enlistedXaResource.getXaResource();
-            final JtaXid branchXid = enlistedXaResource.getBranchXid();
+            final BranchJtaXid branchXid = enlistedXaResource.getBranchXid();
             if (!ok) {
                 LOGGER.debug("Skipping prepare on {} as previous prepare has already failed.", xaResource);
                 continue;
             }
 
-            ok = store(ok, () -> transactionStore.preparing(globalXid, xaResource.getResourceManager()));
+            ok = store(ok, () -> transactionStore.preparing(branchXid, xaResource.getResourceManager()));
             if (!ok) {
                 continue;
             }
@@ -282,11 +284,11 @@ public final class JtaTransaction implements Transaction {
                 final int prepareResult = xaResource.prepare(branchXid);
                 if (prepareResult == XAResource.XA_OK) {
                     LOGGER.debug("xa_prepare on {}; result ok; adding xaResource to list of prepared resources.", xaResource);
-                    ok = store(ok, () -> transactionStore.prepared(globalXid, xaResource.getResourceManager()));
+                    ok = store(ok, () -> transactionStore.prepared(branchXid, xaResource.getResourceManager()));
                 } else if (prepareResult == XAResource.XA_RDONLY) {
                     LOGGER.debug("xa_prepare on {}; result read-only. Skipping xa resource for commit.", xaResource);
                     enlistedXaResource.setClosed();
-                    ok = store(ok, () -> transactionStore.committed(globalXid, xaResource.getResourceManager()));
+                    ok = store(ok, () -> transactionStore.committed(branchXid, xaResource.getResourceManager()));
                 } else {
                     ok = false;
                     LOGGER.error("Unknown result {} from xaResource.prepare on {}", prepareResult, xaResource);
@@ -327,21 +329,21 @@ public final class JtaTransaction implements Transaction {
 
         for (final EnlistedXaResource enlistedXaResource : enlistedXaResources) {
             final XAResourceAdapter xaResource = enlistedXaResource.getXaResource();
-            final JtaXid branchXid = enlistedXaResource.getBranchXid();
+            final BranchJtaXid branchXid = enlistedXaResource.getBranchXid();
 
             if (enlistedXaResource.isClosed()) {
                 LOGGER.debug("Skipping commit on {} as it has already been closed (readonly)", xaResource);
                 continue;
             }
-            storeOk = store(storeOk, () -> transactionStore.committing(globalXid, xaResource.getResourceManager()));
+            storeOk = store(storeOk, () -> transactionStore.committing(branchXid, xaResource.getResourceManager()));
             try {
                 LOGGER.debug("Calling xa_commit on {} using xid {}", xaResource, branchXid);
                 xaResource.commit(branchXid, false);
-                storeOk = store(storeOk, () -> transactionStore.committed(globalXid, xaResource.getResourceManager()));
+                storeOk = store(storeOk, () -> transactionStore.committed(branchXid, xaResource.getResourceManager()));
             } catch (final XAException e) {
                 commitOk = false;
                 LOGGER.error("XA exception during commit", e);
-                storeOk = store(storeOk, () -> transactionStore.commitFailed(globalXid, xaResource.getResourceManager(), e));
+                storeOk = store(storeOk, () -> transactionStore.commitFailed(branchXid, xaResource.getResourceManager(), e));
             }
         }
 
@@ -387,13 +389,13 @@ public final class JtaTransaction implements Transaction {
 
         for (final EnlistedXaResource enlistedXaResource : enlistedXaResources) {
             final XAResourceAdapter xaResource = enlistedXaResource.getXaResource();
-            final JtaXid branchXid = enlistedXaResource.getBranchXid();
+            final BranchJtaXid branchXid = enlistedXaResource.getBranchXid();
 
             if (enlistedXaResource.isClosed()) {
                 LOGGER.debug("Skipping rollback on {} as it has already been closed (readonly/rolled back)", xaResource);
                 continue;
             }
-            storeOk = store(storeOk, () -> transactionStore.rollingBack(globalXid, xaResource.getResourceManager()));
+            storeOk = store(storeOk, () -> transactionStore.rollingBack(branchXid, xaResource.getResourceManager()));
             try {
                 if (enlistedXaResource.isEnded()) {
                     LOGGER.debug("Skipping xa_end on {} as it has already been called", xaResource);
@@ -410,11 +412,11 @@ public final class JtaTransaction implements Transaction {
                 LOGGER.debug("Calling xa_rollback on {} using xid {}", xaResource, branchXid);
                 xaResource.rollback(branchXid);
 
-                storeOk = store(storeOk, () -> transactionStore.rolledBack(globalXid, xaResource.getResourceManager()));
+                storeOk = store(storeOk, () -> transactionStore.rolledBack(branchXid, xaResource.getResourceManager()));
             } catch (final XAException e) {
                 rollbackOk = false;
                 LOGGER.warn("XA exception during rollback", e);
-                storeOk = store(storeOk, () -> transactionStore.rollbackFailed(globalXid, xaResource.getResourceManager(), e));
+                storeOk = store(storeOk, () -> transactionStore.rollbackFailed(branchXid, xaResource.getResourceManager(), e));
             }
         }
 
@@ -518,11 +520,11 @@ public final class JtaTransaction implements Transaction {
 
     private static final class EnlistedXaResource {
         private final XAResourceAdapter xaResource;
-        private final JtaXid branchXid;
+        private final BranchJtaXid branchXid;
         private boolean ended;
         private boolean closed;
 
-        EnlistedXaResource(final XAResourceAdapter xaResource, final JtaXid branchXid) {
+        EnlistedXaResource(final XAResourceAdapter xaResource, final BranchJtaXid branchXid) {
             this.xaResource = xaResource;
             this.branchXid = branchXid;
             ended = false;
@@ -533,7 +535,7 @@ public final class JtaTransaction implements Transaction {
             return xaResource;
         }
 
-        JtaXid getBranchXid() {
+        BranchJtaXid getBranchXid() {
             return branchXid;
         }
 

@@ -7,10 +7,10 @@ public class DefaultSqlTemplate implements JdbcSqlTemplate {
     private String selectNextTransactionId = "select nextval('transaction_seq')";
 
     private String createTransactionTable = "create table transactions(\n"
-            + "    id bigint not null,\n"
-            + "    status varchar(30) not null,\n"
-            + "    created timestamp not null,\n"
-            + "    updated timestamp not null\n"
+            + "    id       bigint       not null,\n"
+            + "    status   varchar(30)  not null,\n"
+            + "    created  timestamp    not null,\n"
+            + "    updated  timestamp    not null\n"
             + ")";
 
     private String selectTransactionIdAndStatus = "select id, status from transactions";
@@ -24,19 +24,20 @@ public class DefaultSqlTemplate implements JdbcSqlTemplate {
     private String deleteTransactionStatus = "delete from transactions where id=?";
 
     private String createResourceTable = "create table transaction_resources(\n"
-            + "    transaction_id bigint not null,\n"
-            + "    name varchar(30) not null,\n"
-            + "    status varchar(30) not null,\n"
-            + "    cause text,\n"
-            + "    created timestamp not null,\n"
-            + "    updated timestamp not null\n"
+            + "    transaction_id  bigint       not null,\n"
+            + "    branch_id       bigint       not null,\n"
+            + "    name            varchar(30)  not null,\n"
+            + "    status          varchar(30)  not null,\n"
+            + "    cause           text,\n"
+            + "    created         timestamp    not null,\n"
+            + "    updated         timestamp    not null\n"
             + ")";
 
     private String selectResourceStatus = "select status from transaction_resources where transaction_id=?";
 
-    private String insertResourceStatus = "insert into transaction_resources(transaction_id, name, status, cause, created, updated) values (?,?, ?, ?, ?, ?)";
+    private String insertResourceStatus = "insert into transaction_resources(transaction_id, branch_id, name, status, cause, created, updated) values (?,?,?,?,?,?,?)";
 
-    private String updateResourceStatus = "update transaction_resources set status=?, cause=?, updated=? where transaction_id=? and name=?";
+    private String updateResourceStatus = "update transaction_resources set status=?, cause=?, updated=? where transaction_id=? and branch_id=? and name=?";
 
     private String deleteResourceStatus = "delete from transaction_resources where transaction_id=?";
 

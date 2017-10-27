@@ -7,6 +7,8 @@ import javax.transaction.xa.Xid;
 import nl.futureedge.simple.jta.store.JtaTransactionStore;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 import nl.futureedge.simple.jta.xa.XAResourceAdapter;
+import nl.futureedge.simple.jta.xid.BranchJtaXid;
+import nl.futureedge.simple.jta.xid.GlobalJtaXid;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -57,11 +59,11 @@ public class JtaTransactionManagerRecoveryTest {
 
     @Test
     public void recover() throws Exception {
-        JtaXid globalXid1 = new JtaXid(TRANSACTION_MANAGER, 1);
-        JtaXid xid1 = globalXid1.createBranchXid();
-        JtaXid xid2 = new JtaXid("other", 2).createBranchXid();
-        JtaXid globalXid3 = new JtaXid(TRANSACTION_MANAGER, 3);
-        JtaXid xid3 = globalXid3.createBranchXid();
+        GlobalJtaXid globalXid1 = new GlobalJtaXid(TRANSACTION_MANAGER, 1);
+        BranchJtaXid xid1 = globalXid1.createBranchXid();
+        BranchJtaXid xid2 = new GlobalJtaXid("other", 2).createBranchXid();
+        GlobalJtaXid globalXid3 = new GlobalJtaXid(TRANSACTION_MANAGER, 3);
+        BranchJtaXid xid3 = globalXid3.createBranchXid();
 
         Mockito.when(transactionStore.isCommitting(xid1)).thenReturn(true);
         Mockito.when(transactionStore.isCommitting(xid3)).thenReturn(false);
@@ -98,10 +100,10 @@ public class JtaTransactionManagerRecoveryTest {
 
     @Test
     public void recoverStoreIsCommittingFailed() throws Exception {
-        JtaXid globalXid1 = new JtaXid(TRANSACTION_MANAGER, 1);
-        JtaXid xid1 = globalXid1.createBranchXid();
-        JtaXid globalXid2 = new JtaXid(TRANSACTION_MANAGER, 2);
-        JtaXid xid2 = globalXid2.createBranchXid();
+        GlobalJtaXid globalXid1 = new GlobalJtaXid(TRANSACTION_MANAGER, 1);
+        BranchJtaXid xid1 = globalXid1.createBranchXid();
+        GlobalJtaXid globalXid2 = new GlobalJtaXid(TRANSACTION_MANAGER, 2);
+        BranchJtaXid xid2 = globalXid2.createBranchXid();
 
         XAException cause = new XAException("Test");
         Mockito.doThrow(cause).when(xaResource).commit(xid1, true);
@@ -126,10 +128,10 @@ public class JtaTransactionManagerRecoveryTest {
 
     @Test
     public void recoverCommitFailed() throws Exception {
-        JtaXid globalXid1 = new JtaXid(TRANSACTION_MANAGER, 1);
-        JtaXid xid1 = globalXid1.createBranchXid();
-        JtaXid globalXid2 = new JtaXid(TRANSACTION_MANAGER, 2);
-        JtaXid xid2 = globalXid2.createBranchXid();
+        GlobalJtaXid globalXid1 = new GlobalJtaXid(TRANSACTION_MANAGER, 1);
+        BranchJtaXid xid1 = globalXid1.createBranchXid();
+        GlobalJtaXid globalXid2 = new GlobalJtaXid(TRANSACTION_MANAGER, 2);
+        BranchJtaXid xid2 = globalXid2.createBranchXid();
 
         XAException cause = new XAException("Test");
         Mockito.doThrow(cause).when(xaResource).commit(xid1, true);
@@ -157,10 +159,10 @@ public class JtaTransactionManagerRecoveryTest {
 
     @Test
     public void recoverRollbackFailed() throws Exception {
-        JtaXid globalXid1 = new JtaXid(TRANSACTION_MANAGER, 1);
-        JtaXid xid1 = globalXid1.createBranchXid();
-        JtaXid globalXid2 = new JtaXid(TRANSACTION_MANAGER, 2);
-        JtaXid xid2 = globalXid2.createBranchXid();
+        GlobalJtaXid globalXid1 = new GlobalJtaXid(TRANSACTION_MANAGER, 1);
+        BranchJtaXid xid1 = globalXid1.createBranchXid();
+        GlobalJtaXid globalXid2 = new GlobalJtaXid(TRANSACTION_MANAGER, 2);
+        BranchJtaXid xid2 = globalXid2.createBranchXid();
 
         XAException cause = new XAException("Test");
         Mockito.doThrow(cause).when(xaResource).rollback(xid1);
@@ -188,10 +190,10 @@ public class JtaTransactionManagerRecoveryTest {
 
     @Test
     public void recoverStoreCommittingFailed() throws Exception {
-        JtaXid globalXid1 = new JtaXid(TRANSACTION_MANAGER, 1);
-        JtaXid xid1 = globalXid1.createBranchXid();
-        JtaXid globalXid2 = new JtaXid(TRANSACTION_MANAGER, 2);
-        JtaXid xid2 = globalXid2.createBranchXid();
+        GlobalJtaXid globalXid1 = new GlobalJtaXid(TRANSACTION_MANAGER, 1);
+        BranchJtaXid xid1 = globalXid1.createBranchXid();
+        GlobalJtaXid globalXid2 = new GlobalJtaXid(TRANSACTION_MANAGER, 2);
+        BranchJtaXid xid2 = globalXid2.createBranchXid();
 
         Mockito.when(xaResource.recover(XAResource.TMENDRSCAN)).thenReturn(new Xid[]{xid1, xid2});
 
@@ -215,10 +217,10 @@ public class JtaTransactionManagerRecoveryTest {
 
     @Test
     public void recoverStoreCommittedFailed() throws Exception {
-        JtaXid globalXid1 = new JtaXid(TRANSACTION_MANAGER, 1);
-        JtaXid xid1 = globalXid1.createBranchXid();
-        JtaXid globalXid2 = new JtaXid(TRANSACTION_MANAGER, 2);
-        JtaXid xid2 = globalXid2.createBranchXid();
+        GlobalJtaXid globalXid1 = new GlobalJtaXid(TRANSACTION_MANAGER, 1);
+        BranchJtaXid xid1 = globalXid1.createBranchXid();
+        GlobalJtaXid globalXid2 = new GlobalJtaXid(TRANSACTION_MANAGER, 2);
+        BranchJtaXid xid2 = globalXid2.createBranchXid();
 
         Mockito.when(xaResource.recover(XAResource.TMENDRSCAN)).thenReturn(new Xid[]{xid1, xid2});
 
@@ -244,10 +246,10 @@ public class JtaTransactionManagerRecoveryTest {
 
     @Test
     public void recoverStoreCommitFailedFailed() throws Exception {
-        JtaXid globalXid1 = new JtaXid(TRANSACTION_MANAGER, 1);
-        JtaXid xid1 = globalXid1.createBranchXid();
-        JtaXid globalXid2 = new JtaXid(TRANSACTION_MANAGER, 2);
-        JtaXid xid2 = globalXid2.createBranchXid();
+        GlobalJtaXid globalXid1 = new GlobalJtaXid(TRANSACTION_MANAGER, 1);
+        BranchJtaXid xid1 = globalXid1.createBranchXid();
+        GlobalJtaXid globalXid2 = new GlobalJtaXid(TRANSACTION_MANAGER, 2);
+        BranchJtaXid xid2 = globalXid2.createBranchXid();
 
         Mockito.when(xaResource.recover(XAResource.TMENDRSCAN)).thenReturn(new Xid[]{xid1, xid2});
 

@@ -53,12 +53,13 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
     }
 
     @Override
-    public void save(final TransactionStatus status, final String resourceManager) throws JtaTransactionStoreException {
-        save(status, resourceManager, null);
+    public void save(final TransactionStatus status, final long branchId, final String resourceManager) throws JtaTransactionStoreException {
+        save(status, branchId, resourceManager, null);
     }
 
     @Override
-    public void save(final TransactionStatus status, final String resourceManager, final Exception cause) throws JtaTransactionStoreException {
+    public void save(final TransactionStatus status, final long branchId, final String resourceManager, final Exception cause)
+            throws JtaTransactionStoreException {
         LOGGER.debug("save(status={}, resourceManager={})", status, resourceManager, cause);
         final Date now = new Date(System.currentTimeMillis());
         final String stackTrace = printStackTrace(cause);
@@ -73,21 +74,23 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
             }
             updateStatement.setDate(3, now);
             updateStatement.setLong(4, transactionId);
-            updateStatement.setString(5, resourceManager);
+            updateStatement.setLong(5, branchId);
+            updateStatement.setString(6, resourceManager);
 
             final int rows = updateStatement.executeUpdate();
             if (rows == 0) {
                 final PreparedStatement insertStatement = connection.prepareStatement(sqlTemplate.insertResourceStatus());
                 insertStatement.setLong(1, transactionId);
-                insertStatement.setString(2, resourceManager);
-                insertStatement.setString(3, status.getText());
+                insertStatement.setLong(2, branchId);
+                insertStatement.setString(3, resourceManager);
+                insertStatement.setString(4, status.getText());
                 if (stackTrace == null) {
-                    insertStatement.setNull(4, Types.CLOB);
+                    insertStatement.setNull(5, Types.CLOB);
                 } else {
-                    insertStatement.setString(4, stackTrace);
+                    insertStatement.setString(5, stackTrace);
                 }
-                insertStatement.setDate(5, now);
                 insertStatement.setDate(6, now);
+                insertStatement.setDate(7, now);
                 insertStatement.executeUpdate();
             }
 
