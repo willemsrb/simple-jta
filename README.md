@@ -7,15 +7,23 @@ directly as files.
 
 Just for that purpose, Simple JTA was created.
 
-##What does it do?
+## What does it do?
 Simple JTA, is just that: a simple JTA transaction manager. It does not come with any bells and whistles, it just does the job it was designed to do: it manages
 the transactions for a single (local) application (component).
 
-##How does it work?
+## What is not supported?
+Because Simple JTA just implements the base requirements some features have been skipped:
+- Enlisting arbitrary (eg. not via the Simple JTA datasource or connection factory adapters) XA resources (javax.transaction.Transaction#enlistResource) is not
+supported.
+- Transaction suspension (javax.transaction.TransactionManager#suspend and javax.transaction.TransactionManager#resume) is not supported 
+- Nested transactions (javax.transaction.TransactionManager#begin when another transaction is already started) are not supported
+- JMS (durable) connection consumers (javax.jms.Connection#createConnectionConsumer and javax.jms.Connection#createDurableConnectionConsumer) are not supported 
+
+## How does it work?
 Simple JTA is designed to work in a [Spring](https://spring.io) powered application. The transaction manager is started as a simple bean and the XA resources 
 (database or messaging) are wrapped using simple beans. From there on you can just configure the Spring transaction manager and use the Spring transaction code!
 
-###Configuring the Simple JTA transaction manager
+### Configuring the Simple JTA transaction manager
 The Simple JTA transaction manager needs two things configured to be able to work correctly:
 1. Unique name(s) to identify it (and the XA resources) and distinguish its transactions; without a unique name two different transaction managers could use the
 same transaction id and a XA resource (database or messaging store) would become tangled up. When doing recovery after a crash event it would use that unique
@@ -50,7 +58,7 @@ able to reliably determine the transaction status when doing recovery.
 The transaction store of choice for Simple JTA is a database. Why? Because all (our) applications already have a fully functioning, reliable and properly backed
 up database any way. We don't want to complicate thing by having a set of files (on each application server) that needs to be backed up (in sync) with that.
 
-###Configuring the database connection
+### Configuring the database connection
 A JDBC datasource is not suited to participate in distributed (JTA) transactions. To handle that an application needs to use a JDBC XA datasource. However, most
 application frameworks only work on datasources and not on XA datasources. Fortunately a JDBC XA datasource only exposes some methods that only need to be 
 called by the transaction manager and ultimately exposes a 'normal' JDBC connection. Therefor Simple JTA provides an adapter that wraps a XA datasource, handles
@@ -70,7 +78,7 @@ the transaction manager methods and exposes a 'normal' JDBC datasource.
     </bean>
 ```
 
-###Configuring the messaging connection
+### Configuring the messaging connection
 As with the database connection a JMS connection factory is not suited to participate in distributed (JTA) transactions. Simple JTA provides an adapter that
 wraps a JMS XA connection factory, handles the transaciton manager methods and exposes a 'normal' JMS connection factory. 
 ```
@@ -86,7 +94,7 @@ wraps a JMS XA connection factory, handles the transaciton manager methods and e
     </bean>
 ```
 
-###Configuring using the Simple JTA namespace
+### Configuring using the Simple JTA namespace
 Using the simple-jta namespace this spring configuration can be compressed considerably:
 ```
 <?xml version="1.0" encoding="UTF-8"?>
@@ -119,15 +127,7 @@ Using the simple-jta namespace this spring configuration can be compressed consi
 </beans>
 ```
 
-###What is not supported?
-Because Simple JTA just implements the base requirements some features have been skipped:
-- Enlisting arbitrary (eg. not via the Simple JTA datasource or connection factory adapters) XA resources (javax.transaction.Transaction#enlistResource) is not
-supported.
-- Transaction suspension (javax.transaction.TransactionManager#suspend and javax.transaction.TransactionManager#resume) is not supported 
-- Nested transactions (javax.transaction.TransactionManager#begin when another transaction is already started) are not supported
-- JMS (durable) connection consumers (javax.jms.Connection#createConnectionConsumer and javax.jms.Connection#createDurableConnectionConsumer) are not supported 
-
-###Distributed transactions and recovery
+### Distributed transactions and recovery
 How does the one and only responsibility of Simple JTA work?
 - Whenever an action is taken that involves the transaction manager (eg. using a database connection, using a messaging connection, calling commit, calling 
 rollback), it is stored in the transaction store using the (global or branch) transaction id and unique resource name.
@@ -147,7 +147,7 @@ resource is 'adapted' the recovery protocol is executed after the datasource is 
 
 After recovery the transaction store is cleaned; fully committed or rolledback transactions are removed from the store.
 
-####Transaction status information
+#### Transaction status information
 The following states are recorded for transactions (globally or per branch, where a branch is specific for a XA resource):
 
 | State | Global | Branch (per resource) |
@@ -165,6 +165,6 @@ The following states are recorded for transactions (globally or per branch, wher
 The COMMIT_FAILED and ROLLBACK_FAILED should not happen as the XA protocol in theory does not allow it (a resource should always be able to commit after successfully preparing
 and a resource should always be able to rollback).
 
-###Further reading
+## Further reading
 - [Distributed Transaction Processing: The XA Specification](http://pubs.opengroup.org/onlinepubs/009680699/toc.pdf)
 - [Java(TM) Transaction API (JTA) Specification 1.0.1](http://download.oracle.com/otndocs/jcp/7286-jta-1.0.1-spec-oth-JSpec/)
