@@ -130,9 +130,7 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
     private boolean isCleanable(final Connection connection, final Long transactionId, final Collection<TransactionStatus> allowedResourceStatuses)
             throws SQLException {
         return jdbc.prepareAndExecuteQuery(connection, sqlTemplate.selectResourceStatus(),
-                resourcesStatement -> {
-                    resourcesStatement.setLong(1, transactionId);
-                },
+                resourcesStatement -> resourcesStatement.setLong(1, transactionId),
                 resourcesResult -> {
                     while (resourcesResult.next()) {
                         final TransactionStatus resourceStatus = TransactionStatus.valueOf(resourcesResult.getString(1));
@@ -145,12 +143,16 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
     }
 
     private void cleanTransaction(final Connection connection, final Long transactionId) throws SQLException {
-        jdbc.prepareAndExecuteUpdate(connection, sqlTemplate.deleteResourceStatus(), deleteResources -> {
-            deleteResources.setLong(1, transactionId);
-        });
-        jdbc.prepareAndExecuteUpdate(connection, sqlTemplate.deleteTransactionStatus(), deleteTransaction -> {
-            deleteTransaction.setLong(1, transactionId);
-        });
+        jdbc.prepareAndExecuteUpdate(
+                connection,
+                sqlTemplate.deleteResourceStatus(),
+                deleteResources -> deleteResources.setLong(1, transactionId)
+        );
+        jdbc.prepareAndExecuteUpdate(
+                connection,
+                sqlTemplate.deleteTransactionStatus(),
+                deleteTransaction -> deleteTransaction.setLong(1, transactionId)
+        );
     }
 
     /* ************************** */

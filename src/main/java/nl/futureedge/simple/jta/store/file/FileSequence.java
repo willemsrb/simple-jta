@@ -9,14 +9,14 @@ import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 
 final class FileSequence implements Closeable {
 
-    public static final String SEQUENCE = "sequence";
+    public static final String SEQUENCE_PREFIX = "sequence";
 
     private final File file;
     private final RandomAccessFile raf;
     private final AtomicLong sequence;
 
     FileSequence(final File baseDirectory) throws JtaTransactionStoreException {
-        file = new File(baseDirectory, SEQUENCE + FilePersistentTransaction.SUFFIX);
+        file = new File(baseDirectory, SEQUENCE_PREFIX + FilePersistentTransaction.SUFFIX);
         try {
             raf = new RandomAccessFile(file, "rws");
             sequence = new AtomicLong(read(raf));

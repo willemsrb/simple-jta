@@ -27,13 +27,13 @@ final class JdbcHelper {
     <T> T doInConnection(final JdbcFunction<T> returnable) throws JtaTransactionStoreException {
         synchronized (connection) {
             try {
-                T result = returnable.apply(connection);
+                final T result = returnable.apply(connection);
                 connection.commit();
                 return result;
-            } catch (Exception e) {
+            } catch (final Exception e) {
                 try {
                     connection.rollback();
-                } catch (SQLException e2) {
+                } catch (final SQLException e2) {
                     // Ignore
                 }
                 throw new JtaTransactionStoreException("Could not execute SQL", e);
@@ -41,25 +41,25 @@ final class JdbcHelper {
         }
     }
 
-    void executeInConnection(JdbcStatementCallback statementCallback) throws JtaTransactionStoreException {
-        doInConnection(connection -> {
-            try (Statement statement = connection.createStatement()) {
+    void executeInConnection(final JdbcStatementCallback statementCallback) throws JtaTransactionStoreException {
+        doInConnection(theConnection -> {
+            try (final Statement statement = theConnection.createStatement()) {
                 statementCallback.apply(statement);
                 return null;
             }
         });
     }
 
-    int prepareAndExecuteUpdate(final Connection connection, final String sql, final JdbcPreparedStatementCallback statementCallback) throws SQLException {
-        try (final PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+    int prepareAndExecuteUpdate(final Connection theConnection, final String sql, final JdbcPreparedStatementCallback statementCallback) throws SQLException {
+        try (final PreparedStatement preparedStatement = theConnection.prepareStatement(sql)) {
             statementCallback.apply(preparedStatement);
             return preparedStatement.executeUpdate();
         }
     }
 
-    <T> T prepareAndExecuteQuery(final Connection connection, final String sql, final JdbcPreparedStatementCallback statementCallback,
+    <T> T prepareAndExecuteQuery(final Connection theConnection, final String sql, final JdbcPreparedStatementCallback statementCallback,
                                  final JdbcResultSetCallback<T> resultSetCallback) throws SQLException {
-        try (final PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+        try (final PreparedStatement preparedStatement = theConnection.prepareStatement(sql)) {
             statementCallback.apply(preparedStatement);
             try (final ResultSet resultSet = preparedStatement.executeQuery()) {
                 return resultSetCallback.apply(resultSet);

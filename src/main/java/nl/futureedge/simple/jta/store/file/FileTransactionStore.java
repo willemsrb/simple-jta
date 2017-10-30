@@ -59,9 +59,9 @@ public final class FileTransactionStore extends BaseTransactionStore implements 
 
     @Override
     public void cleanup() throws JtaTransactionStoreException {
-        final File[] files = baseDirectory.listFiles((dir, name) -> {
-            return name != null && name.startsWith(FilePersistentTransaction.PREFIX) && name.endsWith(FilePersistentTransaction.SUFFIX);
-        });
+        final File[] files = baseDirectory.listFiles((dir, name) ->
+                name != null && name.startsWith(FilePersistentTransaction.PREFIX) && name.endsWith(FilePersistentTransaction.SUFFIX)
+        );
         if (files == null) {
             return;
         }

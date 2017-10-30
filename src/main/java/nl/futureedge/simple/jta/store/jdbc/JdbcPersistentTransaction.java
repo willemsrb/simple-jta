@@ -111,12 +111,16 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
     public void remove() throws JtaTransactionStoreException {
         LOGGER.debug("remove()");
         jdbc.doInConnection(connection -> {
-            jdbc.prepareAndExecuteUpdate(connection, sqlTemplate.deleteResourceStatus(), deleteResources -> {
-                deleteResources.setLong(1, transactionId);
-            });
-            jdbc.prepareAndExecuteUpdate(connection, sqlTemplate.deleteTransactionStatus(), deleteTransaction -> {
-                deleteTransaction.setLong(1, transactionId);
-            });
+            jdbc.prepareAndExecuteUpdate(
+                    connection,
+                    sqlTemplate.deleteResourceStatus(),
+                    deleteResources -> deleteResources.setLong(1, transactionId)
+            );
+            jdbc.prepareAndExecuteUpdate(
+                    connection,
+                    sqlTemplate.deleteTransactionStatus(),
+                    deleteTransaction -> deleteTransaction.setLong(1, transactionId)
+            );
             return null;
         });
     }
@@ -125,10 +129,10 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
     public TransactionStatus getStatus() throws JtaTransactionStoreException {
         LOGGER.debug("getStatus()");
         return jdbc.doInConnection(connection ->
-                jdbc.prepareAndExecuteQuery(connection, sqlTemplate.selectTransactionStatus(),
-                        selectStatement -> {
-                            selectStatement.setLong(1, transactionId);
-                        },
+                jdbc.prepareAndExecuteQuery(
+                        connection,
+                        sqlTemplate.selectTransactionStatus(),
+                        selectStatement -> selectStatement.setLong(1, transactionId),
                         selectResult -> {
                             if (selectResult.next()) {
                                 return TransactionStatus.valueOf(selectResult.getString(1));

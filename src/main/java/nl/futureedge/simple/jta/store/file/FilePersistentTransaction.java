@@ -50,7 +50,6 @@ final class FilePersistentTransaction implements PersistentTransaction, Closeabl
 
     private void readStatus() throws IOException {
         for (String line = ""; line != null; line = raf.readLine()) {
-            System.out.println("LINE: " + line);
             if (line.isEmpty()) {
                 continue;
             }
