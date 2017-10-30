@@ -90,7 +90,7 @@ public class SimpleJtaIT {
 
     @Parameterized.Parameters(name = "{0}")
     public static Object[] data() {
-        return new Object[] { "classpath:test-file-context.xml", "classpath:test-jdbc-context.xml" };
+        return new Object[] { "classpath:test-file-context.xml", "classpath:test-jdbc-context.xml", "classpath:test-beans-context.xml" };
     }
 
     public SimpleJtaIT(String testContextConfiguration) {
