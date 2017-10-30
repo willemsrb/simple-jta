@@ -2,7 +2,10 @@ package nl.futureedge.simple.jta.store.jdbc;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 
 final class JdbcHelper {
@@ -38,6 +41,32 @@ final class JdbcHelper {
         }
     }
 
+    void executeInConnection(JdbcStatementCallback statementCallback) throws JtaTransactionStoreException {
+        doInConnection(connection -> {
+            try (Statement statement = connection.createStatement()) {
+                statementCallback.apply(statement);
+                return null;
+            }
+        });
+    }
+
+    int prepareAndExecuteUpdate(final Connection connection, final String sql, final JdbcPreparedStatementCallback statementCallback) throws SQLException {
+        try (final PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            statementCallback.apply(preparedStatement);
+            return preparedStatement.executeUpdate();
+        }
+    }
+
+    <T> T prepareAndExecuteQuery(final Connection connection, final String sql, final JdbcPreparedStatementCallback statementCallback,
+                                 final JdbcResultSetCallback<T> resultSetCallback) throws SQLException {
+        try (final PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            statementCallback.apply(preparedStatement);
+            try (final ResultSet resultSet = preparedStatement.executeQuery()) {
+                return resultSetCallback.apply(resultSet);
+            }
+        }
+    }
+
     void open() throws JtaTransactionStoreException {
         try {
             if (jdbcDriver != null && !"".equals(jdbcDriver)) {
@@ -67,5 +96,20 @@ final class JdbcHelper {
     @FunctionalInterface
     public interface JdbcFunction<T> {
         T apply(final Connection connection) throws SQLException;
+    }
+
+    @FunctionalInterface
+    public interface JdbcPreparedStatementCallback {
+        void apply(final PreparedStatement preparedStatement) throws SQLException;
+    }
+
+    @FunctionalInterface
+    public interface JdbcStatementCallback {
+        void apply(final Statement statement) throws SQLException;
+    }
+
+    @FunctionalInterface
+    public interface JdbcResultSetCallback<T> {
+        T apply(final ResultSet resultSet) throws SQLException;
     }
 }

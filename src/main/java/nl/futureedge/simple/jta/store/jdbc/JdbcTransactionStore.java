@@ -1,10 +1,7 @@
 package nl.futureedge.simple.jta.store.jdbc;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Collection;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -75,13 +72,10 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
         if (create) {
             LOGGER.debug("Creating tables");
             try {
-                jdbc.doInConnection(connection -> {
-                    try (final Statement statement = connection.createStatement()) {
-                        statement.execute(sqlTemplate.createTransactionIdSequence());
-                        statement.execute(sqlTemplate.createTransactionTable());
-                        statement.execute(sqlTemplate.createResourceTable());
-                    }
-                    return null;
+                jdbc.executeInConnection(statement -> {
+                    statement.execute(sqlTemplate.createTransactionIdSequence());
+                    statement.execute(sqlTemplate.createTransactionTable());
+                    statement.execute(sqlTemplate.createResourceTable());
                 });
             } catch (JtaTransactionStoreException e) {
                 LOGGER.info("Could not create transaction tables; ignoring exception...", e.getCause());
@@ -116,47 +110,47 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
     @Override
     public void cleanup() throws JtaTransactionStoreException {
         jdbc.doInConnection(connection -> {
-            try (final PreparedStatement transactionsStatement = connection.prepareStatement(sqlTemplate.selectTransactionIdAndStatus());
-                 final ResultSet transactionsResult = transactionsStatement.executeQuery()) {
-                while (transactionsResult.next()) {
-                    final Long transactionId = transactionsResult.getLong(1);
-                    final TransactionStatus transactionStatus = TransactionStatus.valueOf(transactionsResult.getString(2));
+            jdbc.prepareAndExecuteQuery(connection, sqlTemplate.selectTransactionIdAndStatus(),
+                    transactionsStatement -> {},
+                    transactionsResult -> {
+                        while (transactionsResult.next()) {
+                            final Long transactionId = transactionsResult.getLong(1);
+                            final TransactionStatus transactionStatus = TransactionStatus.valueOf(transactionsResult.getString(2));
 
-                    if (CLEANABLE.containsKey(transactionStatus) && isCleanable(connection, transactionId, CLEANABLE.get(transactionStatus))) {
-                        cleanTransaction(connection, transactionId);
-                    }
-                }
-            }
-
+                            if (CLEANABLE.containsKey(transactionStatus) && isCleanable(connection, transactionId, CLEANABLE.get(transactionStatus))) {
+                                cleanTransaction(connection, transactionId);
+                            }
+                        }
+                        return null;
+                    });
             return null;
         });
     }
 
     private boolean isCleanable(final Connection connection, final Long transactionId, final Collection<TransactionStatus> allowedResourceStatuses)
             throws SQLException {
-        try (final PreparedStatement resourcesStatement = connection.prepareStatement(sqlTemplate.selectResourceStatus())) {
-            resourcesStatement.setLong(1, transactionId);
-            try (final ResultSet resourcesResult = resourcesStatement.executeQuery()) {
-                while (resourcesResult.next()) {
-                    final TransactionStatus resourceStatus = TransactionStatus.valueOf(resourcesResult.getString(1));
-                    if (!allowedResourceStatuses.contains(resourceStatus)) {
-                        return false;
+        return jdbc.prepareAndExecuteQuery(connection, sqlTemplate.selectResourceStatus(),
+                resourcesStatement -> {
+                    resourcesStatement.setLong(1, transactionId);
+                },
+                resourcesResult -> {
+                    while (resourcesResult.next()) {
+                        final TransactionStatus resourceStatus = TransactionStatus.valueOf(resourcesResult.getString(1));
+                        if (!allowedResourceStatuses.contains(resourceStatus)) {
+                            return false;
+                        }
                     }
-                }
-            }
-        }
-        return true;
+                    return true;
+                });
     }
 
     private void cleanTransaction(final Connection connection, final Long transactionId) throws SQLException {
-        try (final PreparedStatement deleteResources = connection.prepareStatement(sqlTemplate.deleteResourceStatus())) {
+        jdbc.prepareAndExecuteUpdate(connection, sqlTemplate.deleteResourceStatus(), deleteResources -> {
             deleteResources.setLong(1, transactionId);
-            deleteResources.executeUpdate();
-        }
-        try (final PreparedStatement deleteTransaction = connection.prepareStatement(sqlTemplate.deleteTransactionStatus())) {
+        });
+        jdbc.prepareAndExecuteUpdate(connection, sqlTemplate.deleteTransactionStatus(), deleteTransaction -> {
             deleteTransaction.setLong(1, transactionId);
-            deleteTransaction.executeUpdate();
-        }
+        });
     }
 
     /* ************************** */
@@ -166,15 +160,17 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
     @Override
     public long nextTransactionId() throws JtaTransactionStoreException {
         LOGGER.debug("nextTransactionId()");
-        return jdbc.doInConnection(connection -> {
-            try (final PreparedStatement statement = connection.prepareStatement(sqlTemplate.selectNextTransactionId());
-                 final ResultSet resultSet = statement.executeQuery()) {
-                if (!resultSet.next()) {
-                    throw new SQLException("No row returned from sequence select statement");
-                }
-                return resultSet.getLong(1);
-            }
-        });
+        return jdbc.doInConnection(
+                connection -> jdbc.prepareAndExecuteQuery(connection,
+                        sqlTemplate.selectNextTransactionId(),
+                        ps -> {},
+                        resultSet -> {
+                            if (!resultSet.next()) {
+                                throw new SQLException("No row returned from sequence select statement");
+                            }
+                            return resultSet.getLong(1);
+                        })
+        );
     }
 
     @Override
