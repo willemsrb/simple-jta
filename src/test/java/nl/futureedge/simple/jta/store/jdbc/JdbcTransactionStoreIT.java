@@ -1,4 +1,4 @@
-package nl.futureedge.simple.jta.it;
+package nl.futureedge.simple.jta.store.jdbc;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -10,7 +10,6 @@ import java.util.Properties;
 import javax.sql.DataSource;
 import javax.transaction.xa.XAException;
 import nl.futureedge.simple.jta.ReflectionTestUtils;
-import nl.futureedge.simple.jta.store.jdbc.JdbcTransactionStore;
 import nl.futureedge.simple.jta.store.jdbc.sql.HsqldbSqlTemplate;
 import nl.futureedge.simple.jta.xid.BranchJtaXid;
 import nl.futureedge.simple.jta.xid.GlobalJtaXid;
