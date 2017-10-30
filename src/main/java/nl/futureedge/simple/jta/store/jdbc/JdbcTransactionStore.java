@@ -106,11 +106,12 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
     /* *** CLEANUP ************** */
     /* ************************** */
 
-
     @Override
     public void cleanup() throws JtaTransactionStoreException {
         jdbc.doInConnection(connection -> {
-            jdbc.prepareAndExecuteQuery(connection, sqlTemplate.selectTransactionIdAndStatus(),
+            jdbc.prepareAndExecuteQuery(
+                    connection,
+                    sqlTemplate.selectTransactionIdAndStatus(),
                     transactionsStatement -> {},
                     transactionsResult -> {
                         while (transactionsResult.next()) {
@@ -129,7 +130,9 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
 
     private boolean isCleanable(final Connection connection, final Long transactionId, final Collection<TransactionStatus> allowedResourceStatuses)
             throws SQLException {
-        return jdbc.prepareAndExecuteQuery(connection, sqlTemplate.selectResourceStatus(),
+        return jdbc.prepareAndExecuteQuery(
+                connection,
+                sqlTemplate.selectResourceStatus(),
                 resourcesStatement -> resourcesStatement.setLong(1, transactionId),
                 resourcesResult -> {
                     while (resourcesResult.next()) {
