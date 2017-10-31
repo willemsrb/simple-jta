@@ -333,6 +333,79 @@
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
                 </configuration>
             </plugin>
+
+            <plugin>
+                <groupId>nl.future-edge.docker</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <version>0.2.12</version>
+
+                <executions>
+                    <execution>
+                        <id>setup-network</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>create-network</goal>
+                        </goals>
+                        <configuration>
+                            <networkNameProperty>docker.network</networkNameProperty>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>setup-postgresql</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>run</goal>
+                            <goal>write-properties</goal>
+                        </goals>
+                        <configuration>
+                            <runOptions>--network ${docker.network} -p 5432 -e POSTGRES_USER=simple -e POSTGRES_PASSWORD=jta -e POSTGRES_DB=trans</runOptions>
+                            <image>postgres:9.6</image>
+                            <portPropertiesAsString>5432/tcp=postgresql.port</portPropertiesAsString>
+                            <!--
+                            -p 5432:5432
+                            -->
+                            <target>${project.build.directory}/test-classes/postgresql.properties</target>
+                            <keys>
+                                <key>postgresql.port</key>
+                            </keys>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>setup-mariadb</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>run</goal>
+                            <goal>write-properties</goal>
+                        </goals>
+                        <configuration>
+                            <runOptions>--network ${docker.network} -p 3306 -e MYSQL_USER=simple -e MYSQL_PASSWORD=jta -e MYSQL_DATABASE=trans -e MYSQL_ROOT_PASSWORD=secret</runOptions>
+                            <image>mariadb:10.3</image>
+                            <portPropertiesAsString>3306/tcp=mariadb.port</portPropertiesAsString>
+                            <!--
+                            -p 3306:3306
+                            -->
+                            <target>${project.build.directory}/test-classes/mariadb.properties</target>
+                            <keys>
+                                <key>mariadb.port</key>
+                            </keys>
+                        </configuration>
+                    </execution>
+
+                    <execution>
+                        <id>remove-network</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>remove-network</goal>
+                        </goals>
+                        <configuration>
+                            <networkName>${docker.network}</networkName>
+                            <stopContainers>true</stopContainers>
+                            <removeContainers>true</removeContainers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>

@@ -18,10 +18,6 @@ jdk:
 
 addons:
   - sonarqube: true
-  
-before_script:
-  - docker run -d -p 3306:3306 -e MYSQL_USER=simple -e MYSQL_PASSWORD=jta -e MYSQL_DATABASE=trans -e MYSQL_ROOT_PASSWORD=secret mariadb:10.3
-  - docker run -d -p 5432:5432 -e POSTGRES_USER=simple -e POSTGRES_PASSWORD=jta -e POSTGRES_DB=trans postgres:9.6 
 
 script:
   - openssl aes-256-cbc -k $GPG_PASSPHRASE -in codesigning.asc.enc -out codesigning.asc -d

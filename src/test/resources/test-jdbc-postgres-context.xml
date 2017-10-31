@@ -7,12 +7,12 @@
                            http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
                            http://www.future-edge.nl/schema/simple/jta http://www.future-edge.nl/schema/simple/jta/simple-jta.xsd">
 
-    <context:property-placeholder/>
+    <context:property-placeholder location="postgresql.properties"/>
     <context:annotation-config/>
 
     <!-- TransactionManager -->
     <simple-jta:transaction-manager name="transactionManager" unique-name="test">
-        <simple-jta:jdbc-transaction-store create="true" url="jdbc:postgresql://localhost:5432/trans" user="simple" password="jta" />
+        <simple-jta:jdbc-transaction-store create="true" url="jdbc:postgresql://localhost:${postgresql.port}/trans" user="simple" password="jta" />
     </simple-jta:transaction-manager>
 
     <import resource="classpath:test-base-context.xml" />
