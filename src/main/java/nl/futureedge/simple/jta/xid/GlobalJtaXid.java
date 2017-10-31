@@ -1,5 +1,6 @@
 package nl.futureedge.simple.jta.xid;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -25,6 +26,32 @@ public final class GlobalJtaXid extends BaseJtaXid {
      */
     public BranchJtaXid createBranchXid() {
         return new BranchJtaXid(getTransactionManager(), getTransactionId(), branchSequence.incrementAndGet());
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof GlobalJtaXid)) {
+            return false;
+        }
+        final GlobalJtaXid jtaXid = (GlobalJtaXid) o;
+        return getTransactionId() == jtaXid.getTransactionId() &&
+                Objects.equals(getTransactionManager(), jtaXid.getTransactionManager());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getTransactionManager(), getTransactionId());
+    }
+
+    @Override
+    public String toString() {
+        return "GlobalJtaXid{" +
+                "transactionManager='" + getTransactionManager() + '\'' +
+                ", transactionId=" + getTransactionId() +
+                '}';
     }
 
 }

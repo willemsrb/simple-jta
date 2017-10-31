@@ -3,6 +3,7 @@ package nl.futureedge.simple.jta.xid;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import javax.transaction.xa.Xid;
 
 /**
@@ -12,13 +13,6 @@ public final class BranchJtaXid extends BaseJtaXid {
 
     BranchJtaXid(final String transactionManager, final long transactionId, final Long branchId) {
         super(transactionManager, transactionId, branchId);
-    }
-
-    /**
-     * @return return branch id (null if this is the global transaction)
-     */
-    public Long getBranchId() {
-        return super.getBranchId();
     }
 
     /**
@@ -67,4 +61,32 @@ public final class BranchJtaXid extends BaseJtaXid {
         return true;
     }
 
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof BaseJtaXid)) {
+            return false;
+        }
+        final BranchJtaXid jtaXid = (BranchJtaXid) o;
+        return getTransactionId() == jtaXid.getTransactionId() &&
+                Objects.equals(getTransactionManager(), jtaXid.getTransactionManager()) &&
+                Objects.equals(getBranchId(), jtaXid.getBranchId());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getTransactionManager(), getTransactionId(), getBranchId());
+    }
+
+    @Override
+    public String toString() {
+        return "BranchJtaXid{" +
+                "transactionManager='" + getTransactionManager() + '\'' +
+                ", transactionId=" + getTransactionId() +
+                ", branchId=" + getBranchId() +
+                '}';
+    }
 }

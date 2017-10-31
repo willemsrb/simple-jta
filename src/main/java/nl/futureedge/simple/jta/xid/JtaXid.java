@@ -10,11 +10,11 @@ public interface JtaXid extends Xid {
     /**
      * @return the transaction manager unique name
      */
-    public String getTransactionManager();
+    String getTransactionManager();
 
     /**
      * @return transaction id
      */
-    public long getTransactionId();
+    long getTransactionId();
 
 }

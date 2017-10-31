@@ -2,7 +2,6 @@ package nl.futureedge.simple.jta.xid;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
-import java.util.Objects;
 
 /**
  * Jta XID; not for external use!
@@ -61,7 +60,6 @@ class BaseJtaXid implements JtaXid {
     /**
      * @return the transaction manager unique name
      */
-    @Override
     public String getTransactionManager() {
         return transactionManager;
     }
@@ -69,7 +67,6 @@ class BaseJtaXid implements JtaXid {
     /**
      * @return transaction id
      */
-    @Override
     public long getTransactionId() {
         return transactionId;
     }
@@ -77,7 +74,7 @@ class BaseJtaXid implements JtaXid {
     /**
      * @return return branch id (null if this is the global transaction)
      */
-    protected Long getBranchId() {
+    public Long getBranchId() {
         return branchId;
     }
 
@@ -96,31 +93,4 @@ class BaseJtaXid implements JtaXid {
         return branchQualifier;
     }
 
-    @Override
-    public boolean equals(final Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof BaseJtaXid)) {
-            return false;
-        }
-        final BaseJtaXid jtaXid = (BaseJtaXid) o;
-        return transactionId == jtaXid.transactionId &&
-                Objects.equals(transactionManager, jtaXid.transactionManager) &&
-                Objects.equals(branchId, jtaXid.branchId);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(transactionManager, transactionId, branchId);
-    }
-
-    @Override
-    public String toString() {
-        return "JtaXid{" +
-                "transactionManager='" + transactionManager + '\'' +
-                ", transactionId=" + transactionId +
-                ", branchId=" + branchId +
-                '}';
-    }
 }
