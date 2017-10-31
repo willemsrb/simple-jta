@@ -2,6 +2,7 @@ package nl.futureedge.simple.jta.store.jdbc;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Collection;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -102,25 +103,37 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
             LOGGER.debug("Creating tables");
             try {
                 jdbc.executeInConnection(statement -> {
-                    try {
-                        statement.execute(sqlTemplate.createTransactionIdSequence());
-                    } catch (SQLException e) {
-                        LOGGER.info("Could not create transaction id sequence; ignoring exception ...", e);
-                    }
-                    try {
-                        statement.execute(sqlTemplate.createTransactionTable());
-                    } catch (SQLException e) {
-                        LOGGER.info("Could not create transaction table; ignoring exception ...", e);
-                    }
-                    try {
-                        statement.execute(sqlTemplate.createResourceTable());
-                    } catch (SQLException e) {
-                        LOGGER.info("Could not create resource table; ignoring exception ...", e);
-                    }
+                    createTransactionIdSequence(statement);
+                    createTransactionTable(statement);
+                    createResourceTable(statement);
                 });
             } catch (JtaTransactionStoreException e) {
                 LOGGER.info("Could not create transaction tables; ignoring exception...", e.getCause());
             }
+        }
+    }
+
+    private void createTransactionIdSequence(final Statement statement) {
+        try {
+            statement.execute(sqlTemplate.createTransactionIdSequence());
+        } catch (SQLException e) {
+            LOGGER.info("Could not create transaction id sequence; ignoring exception ...", e);
+        }
+    }
+
+    private void createTransactionTable(final Statement statement) {
+        try {
+            statement.execute(sqlTemplate.createTransactionTable());
+        } catch (SQLException e) {
+            LOGGER.info("Could not create transaction table; ignoring exception ...", e);
+        }
+    }
+
+    private void createResourceTable(final Statement statement) {
+        try {
+            statement.execute(sqlTemplate.createResourceTable());
+        } catch (SQLException e) {
+            LOGGER.info("Could not create resource table; ignoring exception ...", e);
         }
     }
 
