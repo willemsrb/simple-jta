@@ -173,7 +173,7 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
             jdbc.prepareAndExecuteQuery(
                     connection,
                     sqlTemplate.selectTransactionIdAndStatus(),
-                    transactionsStatement -> {},
+                    transactionsStatement -> { /* No statement parameters */ },
                     transactionsResult -> {
                         while (transactionsResult.next()) {
                             final Long transactionId = transactionsResult.getLong(1);
@@ -229,7 +229,7 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
         return jdbc.doInConnection(
                 connection -> jdbc.prepareAndExecuteQuery(connection,
                         sqlTemplate.selectNextTransactionId(),
-                        ps -> {},
+                        ps -> { /* No statement parameters */ },
                         resultSet -> {
                             if (!resultSet.next()) {
                                 throw new SQLException("No row returned from sequence select statement");
