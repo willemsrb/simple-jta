@@ -3,6 +3,9 @@ package nl.futureedge.simple.jta.spring.config;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.w3c.dom.Element;
 
+/**
+ * Spring configuration utilities.
+ */
 public final class SpringConfigParser {
 
     private SpringConfigParser() {

@@ -11,6 +11,9 @@ import nl.futureedge.simple.jta.store.jdbc.sql.JdbcSqlTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * JDBC persistent transaction information.
+ */
 final class JdbcPersistentTransaction implements PersistentTransaction {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcPersistentTransaction.class);

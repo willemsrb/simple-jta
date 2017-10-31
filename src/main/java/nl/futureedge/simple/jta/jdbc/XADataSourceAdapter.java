@@ -66,6 +66,10 @@ public final class XADataSourceAdapter implements DataSource, InitializingBean {
         this.jtaTransactionManager = jtaTransactionManager;
     }
 
+    /**
+     * Enables support for the JTA resource joining (default disabled).
+     * @param supportsJoin true, if the resource correctly supports joining
+     */
     public void setSupportsJoin(final boolean supportsJoin) {
         this.supportsJoin = supportsJoin;
     }

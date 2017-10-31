@@ -8,6 +8,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 
+/**
+ * JDBC utilities.
+ */
 final class JdbcHelper {
 
     private final String jdbcDriver;

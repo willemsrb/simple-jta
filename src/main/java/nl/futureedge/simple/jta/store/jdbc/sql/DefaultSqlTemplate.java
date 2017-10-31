@@ -1,13 +1,13 @@
 package nl.futureedge.simple.jta.store.jdbc.sql;
 
 /**
- * Default SQL template.
+ * Default SQL template (SQL:2003).
  */
 public class DefaultSqlTemplate implements JdbcSqlTemplate {
 
-    private String createTransactionIdSequence = "create sequence transaction_seq";
+    private String createTransactionIdSequence = "create sequence transaction_seq cycle";
 
-    private String selectNextTransactionId = "select nextval('transaction_seq')";
+    private String selectNextTransactionId = "select next value for transaction_seq";
 
     private String createTransactionTable = "create table transactions(\n"
             + "    id       bigint       not null,\n"
@@ -31,15 +31,14 @@ public class DefaultSqlTemplate implements JdbcSqlTemplate {
             + "    branch_id       bigint       not null,\n"
             + "    name            varchar(30)  not null,\n"
             + "    status          varchar(30)  not null,\n"
-            + "    cause           text,\n"
+            + "    cause           clob                 ,\n"
             + "    created         timestamp    not null,\n"
             + "    updated         timestamp    not null\n"
             + ")";
 
     private String selectResourceStatus = "select status from transaction_resources where transaction_id=?";
 
-    private String
-            insertResourceStatus =
+    private String insertResourceStatus =
             "insert into transaction_resources(transaction_id, branch_id, name, status, cause, created, updated) values (?,?,?,?,?,?,?)";
 
     private String updateResourceStatus = "update transaction_resources set status=?, cause=?, updated=? where transaction_id=? and branch_id=? and name=?";

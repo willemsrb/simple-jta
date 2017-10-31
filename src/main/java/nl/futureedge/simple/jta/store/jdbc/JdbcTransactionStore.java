@@ -12,6 +12,8 @@ import nl.futureedge.simple.jta.store.impl.TransactionStatus;
 import nl.futureedge.simple.jta.store.jdbc.sql.DefaultSqlTemplate;
 import nl.futureedge.simple.jta.store.jdbc.sql.HsqldbSqlTemplate;
 import nl.futureedge.simple.jta.store.jdbc.sql.JdbcSqlTemplate;
+import nl.futureedge.simple.jta.store.jdbc.sql.MysqlSqlTemplate;
+import nl.futureedge.simple.jta.store.jdbc.sql.PostgresqlSqlTemplate;
 import nl.futureedge.simple.jta.xid.JtaXid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +21,9 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Required;
 
+/**
+ * JDBC back transaction store.
+ */
 public final class JdbcTransactionStore extends BaseTransactionStore implements InitializingBean, DisposableBean {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcTransactionStore.class);
@@ -35,27 +40,51 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
     private JdbcHelper jdbc;
     private JdbcSqlTemplate sqlTemplate;
 
+    /**
+     * Enables execution of DDL to create database objects during startup (default disabled).
+     * @param create true, to create database objects during startup
+     */
     public void setCreate(final boolean create) {
         this.create = create;
     }
 
+    /**
+     * Set the classname of the JDBC database driver to load (can be left empty for JDBC 4.0+ drivers).
+     * @param jdbcDriver JDBC driver class name
+     */
     public void setDriver(final String jdbcDriver) {
         this.jdbcDriver = jdbcDriver;
     }
 
+    /**
+     * Set the JDBC url.
+     * @param jdbcUrl JDBC url
+     */
     @Required
     public void setUrl(final String jdbcUrl) {
         this.jdbcUrl = jdbcUrl;
     }
 
+    /**
+     * Set the username to connect.
+     * @param jdbcUser username
+     */
     public void setUser(final String jdbcUser) {
         this.jdbcUser = jdbcUser;
     }
 
+    /**
+     * Set the password to connect (only used if username is filled).
+     * @param jdbcPassword password
+     */
     public void setPassword(final String jdbcPassword) {
         this.jdbcPassword = jdbcPassword;
     }
 
+    /**
+     * Set the SQL template to use (autodetect based on JDBC url if left empty).
+     * @param sqlTemplate SQL template
+     */
     public void setSqlTemplate(final JdbcSqlTemplate sqlTemplate) {
         this.sqlTemplate = sqlTemplate;
     }
@@ -73,9 +102,21 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
             LOGGER.debug("Creating tables");
             try {
                 jdbc.executeInConnection(statement -> {
-                    statement.execute(sqlTemplate.createTransactionIdSequence());
-                    statement.execute(sqlTemplate.createTransactionTable());
-                    statement.execute(sqlTemplate.createResourceTable());
+                    try {
+                        statement.execute(sqlTemplate.createTransactionIdSequence());
+                    } catch (SQLException e) {
+                        LOGGER.info("Could not create transaction id sequence; ignoring exception ...", e);
+                    }
+                    try {
+                        statement.execute(sqlTemplate.createTransactionTable());
+                    } catch (SQLException e) {
+                        LOGGER.info("Could not create transaction table; ignoring exception ...", e);
+                    }
+                    try {
+                        statement.execute(sqlTemplate.createResourceTable());
+                    } catch (SQLException e) {
+                        LOGGER.info("Could not create resource table; ignoring exception ...", e);
+                    }
                 });
             } catch (JtaTransactionStoreException e) {
                 LOGGER.info("Could not create transaction tables; ignoring exception...", e.getCause());
@@ -96,6 +137,13 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
             case "hsqldb":
                 LOGGER.info("Using HSQLDB SQL template (url detected)");
                 return new HsqldbSqlTemplate();
+            case "mariadb":
+            case "mysql":
+                LOGGER.info("Using Mysql SQL template (url detected)");
+                return new MysqlSqlTemplate();
+            case "postgresql":
+                LOGGER.info("Using PostgreSQL SQL template (url detected)");
+                return new PostgresqlSqlTemplate();
             default:
                 LOGGER.info("Using default SQL template");
                 return new DefaultSqlTemplate();

@@ -4,7 +4,7 @@ import org.springframework.beans.factory.xml.NamespaceHandlerSupport;
 
 
 /**
- * A {@link org.springframework.beans.factory.xml.NamespaceHandler} for the jta4spring namespace.
+ * A {@link org.springframework.beans.factory.xml.NamespaceHandler} for the simple-jta namespace.
  */
 public final class SimpleJtaSpringNamespaceHandler extends NamespaceHandlerSupport {
 
