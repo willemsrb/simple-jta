@@ -72,6 +72,10 @@ public final class TransactionManagerParser extends AbstractBeanDefinitionParser
         final BeanDefinitionBuilder fileTransactionStoreBuilder = BeanDefinitionBuilder.rootBeanDefinition(FileTransactionStore.class);
 
         fileTransactionStoreBuilder.addPropertyValue("baseDirectory", element.getAttribute("location"));
+        final String storeAll = element.getAttribute("store-all-states");
+        if (storeAll != null && !"".equals(storeAll)) {
+            fileTransactionStoreBuilder.addPropertyValue("storeAll", storeAll);
+        }
         SpringConfigParser.handleDependsOn(fileTransactionStoreBuilder, element);
 
         final BeanDefinition fileTransactionStore = fileTransactionStoreBuilder.getBeanDefinition();
@@ -91,6 +95,10 @@ public final class TransactionManagerParser extends AbstractBeanDefinitionParser
         jdbcTransactionStoreBuilder.addPropertyValue("url", element.getAttribute("url"));
         jdbcTransactionStoreBuilder.addPropertyValue("user", element.getAttribute("user"));
         jdbcTransactionStoreBuilder.addPropertyValue("password", element.getAttribute("password"));
+        final String storeAll = element.getAttribute("store-all-states");
+        if (storeAll != null && !"".equals(storeAll)) {
+            jdbcTransactionStoreBuilder.addPropertyValue("storeAll", storeAll);
+        }
         SpringConfigParser.handleDependsOn(jdbcTransactionStoreBuilder, element);
 
         final BeanDefinition jdbcTransactionStore = jdbcTransactionStoreBuilder.getBeanDefinition();

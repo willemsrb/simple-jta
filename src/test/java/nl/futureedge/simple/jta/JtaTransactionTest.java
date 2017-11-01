@@ -52,7 +52,7 @@ public class JtaTransactionTest {
 
     @Test
     public void testActiveFail() throws Exception {
-        GlobalJtaXid xid2 = new GlobalJtaXid("Test", 2L);
+        final GlobalJtaXid xid2 = new GlobalJtaXid("Test", 2L);
         Mockito.doThrow(new JtaTransactionStoreException("Test")).when(transactionStore).active(xid2);
         try {
             new JtaTransaction(xid2, null, transactionStore);
@@ -60,7 +60,6 @@ public class JtaTransactionTest {
         } catch (SystemException e) {
             // Expected
         }
-
     }
 
     @Test
@@ -132,6 +131,7 @@ public class JtaTransactionTest {
         ordered.verify(transactionStore).committed(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).committed(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree, resourceFour);
     }
 
@@ -199,6 +199,7 @@ public class JtaTransactionTest {
         ordered.verify(transactionStore).rolledBack(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).rolledBack(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
     }
 
@@ -277,6 +278,7 @@ public class JtaTransactionTest {
         ordered.verify(transactionStore).rolledBack(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).rolledBack(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
     }
 
@@ -312,6 +314,5 @@ public class JtaTransactionTest {
         } catch (IllegalStateException e) {
             // Expected
         }
-
     }
 }

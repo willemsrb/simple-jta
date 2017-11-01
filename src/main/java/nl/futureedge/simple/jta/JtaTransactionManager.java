@@ -96,7 +96,8 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
     /* ************************************** */
 
     @Override
-    public void transactionCompleted() {
+    public void transactionCompleted(JtaTransaction completedTransaction) {
+        // The completed transaction is always the transaction of the thread
         transaction.set(null);
     }
 
@@ -114,6 +115,7 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
         final JtaTransaction result;
         try {
             result = new JtaTransaction(new GlobalJtaXid(uniqueName, transactionStore.nextTransactionId()), timeoutInSeconds.get(), transactionStore);
+            result.registerSystemCallback(transactionStore);
             result.registerSystemCallback(this);
         } catch (final JtaTransactionStoreException | IllegalStateException e) {
             throw systemException("Could not create new transaction", e);

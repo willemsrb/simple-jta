@@ -65,6 +65,10 @@ public final class JtaTransaction implements Transaction {
         }
     }
 
+    public long getTransactionId() {
+        return globalXid.getTransactionId();
+    }
+
     /* ***************************** */
     /* *** CONNECTIONS ************* */
     /* ***************************** */
@@ -464,7 +468,7 @@ public final class JtaTransaction implements Transaction {
 
     private void doSystemCallbacks() {
         for (final JtaSystemCallback systemCallback : systemCallbacks) {
-            systemCallback.transactionCompleted();
+            systemCallback.transactionCompleted(this);
         }
     }
 

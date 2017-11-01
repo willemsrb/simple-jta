@@ -51,8 +51,30 @@ The Simple JTA transaction manager needs two things configured to be able to wor
     </bean>
 </beans>
 ```
+#####nl.futureedge.simple.jta.JtaTransactionManager properties
+| Property | Explanation | Required |
+|---|---|---|
+| uniqueName | The unique name to use for this transaction manager | Yes |
+| jtaTransactionStore | Transaction store to 'stably' store transaction information | Yes (Autowired) |
 
 The transaction store of choice for Simple JTA is a database. Why? Because all (our) applications already have a fully functioning, reliable and properly backed up database any way. We don't want to complicate thing by having a set of files (on each application server) that needs to be backed up (in sync) with that.
+
+#####nl.futureedge.simple.jta.store.jdbc.JdbcTransactionStore properties
+| Property | Explanation | Required |
+|---|---|---|
+| create | If true, the transaction store will try to create the database objects on startup | No (default false) |
+| driver | The JDBC Driver classname to load (not needed for JDBC 4.0 drivers) | No |
+| url | The JDBC url to connect to the database | Yes |
+| user | The username to use when connecting to the database | No |
+| password | The password to use when connecting to the database | No |
+| sqlTemplate | SQL template to use; if left empty the transaction store will try to detect the database type based on the JDBC url and else use a SQL-2003 compatible default | No |
+| storeAll | If true, the transaction store will record all transaction states; else, the store will only record the minimum state | No (default false) |
+
+#####nl.futureedge.simple.jta.store.file.FileTransactionStore properties
+| Property | Explanation | Required |
+|---|---|---|
+| baseDirectory | The base directory for the transaction logs | Yes |
+| storeAll | If true, the transaction store will record all transaction states; else, the store will only record the minimum state | No (default false) |
 
 ### Configuring the database connection
 A JDBC datasource is not suited to participate in distributed (JTA) transactions. To handle that an application needs to use a JDBC XA datasource. However, most application frameworks only work on datasources and not on XA datasources. Fortunately a JDBC XA datasource only exposes some methods that only need to be called by the transaction manager and ultimately exposes a 'normal' JDBC connection. Therefor Simple JTA provides an adapter that wraps a XA datasource, handles the transaction manager methods and exposes a 'normal' JDBC datasource.
@@ -70,6 +92,13 @@ A JDBC datasource is not suited to participate in distributed (JTA) transactions
         <property name="xaDataSource" ref="xaDataSource" />
     </bean>
 ```
+#####nl.futureedge.simple.jta.jdbc.XaDataSourceAdapter properties
+| Property | Explanation | Required |
+|---|---|---|
+| uniqueName | The unique name to use for this resource manager | Yes |
+| xaDataSource | The vendor provided XA DataSource to adapt | Yes |
+| jtaTransactionManager | The JtaTransactionManager this datasource is managed by (for recovery) | Yes (Autowired) |
+| supportsJoin | Set to true if this resource correctly supports joining partial transactions | No (default false) |
 
 ### Configuring the messaging connection
 As with the database connection a JMS connection factory is not suited to participate in distributed (JTA) transactions. Simple JTA provides an adapter that wraps a JMS XA connection factory, handles the transaciton manager methods and exposes a 'normal' JMS connection factory.
@@ -85,6 +114,13 @@ As with the database connection a JMS connection factory is not suited to partic
         <property name="xaConnectionFactory" ref="xaConnectionFactory" />
     </bean>
 ```
+#####nl.futureedge.simple.jta.jms.XAConnectionFactoryAdapter properties
+| Property | Explanation | Required |
+|---|---|---|
+| uniqueName | The unique name to use for this resource manager | Yes |
+| xaConnectionFactory | The vendor provided XA ConnectionFactory to adapt | Yes |
+| jtaTransactionManager | The JtaTransactionManager this datasource is managed by (for recovery) | Yes (Autowired) |
+| supportsJoin | Set to true if this resource correctly supports joining partial transactions | No (default false) |
 
 ### Configuring using the Simple JTA namespace
 Using the simple-jta namespace this spring configuration can be compressed considerably:
@@ -136,7 +172,24 @@ The one and only reason to store the transaction info is to be able to reliably 
 After recovery the transaction store is cleaned; fully committed or rolledback transactions are removed from the store.
 
 #### Transaction status information
-The following states are recorded for transactions (globally or per branch, where a branch is specific for a XA resource):
+The following states are always stored for transactions (globally or per branch, where a branch is specific for a XA resource):
+
+| Global / Branch | State | Explanation |
+|---|---|---|
+| Global | PREPARING | Identification of the global transaction |
+| Branch | PREPARED | This locks the changes to the resource |
+| Global | COMMITTING | Records the decision to commit the transaction |
+| Branch | COMMITTED | Signifies the changes in the resource have been succesfully committed |
+| Global(*)| COMMITTED | The transaction has completed succesfully by committing the changes |
+| Global (**) | ROLLING_BACK | Records the decision to rollback the transaction |
+| Branch (**) | ROLLED_BACK| Records the decision to rollback the transaction |
+| Global (*) | ROLLED_BACK| The transaction has completed succesfully by rolling back the changes |
+| Both  | COMMIT_FAILED | Always recorded |
+| Both  | ROLLBACK_FAILED | Always recorded |
+| (*) | | Actually removes all transaction information from the store |
+| (**) | | Only stored when the transaction had started preparing (on recovery an unknown transaction is always rolled back) |
+
+When the transaction store is configured, all states can be recorded :
 
 | State | Global | Branch (per resource) |
 |---|---|---|

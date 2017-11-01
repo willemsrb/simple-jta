@@ -8,5 +8,5 @@ public interface JtaSystemCallback {
     /**
      * Callback when the transaction is completed.
      */
-    void transactionCompleted();
+    void transactionCompleted(JtaTransaction transaction);
 }

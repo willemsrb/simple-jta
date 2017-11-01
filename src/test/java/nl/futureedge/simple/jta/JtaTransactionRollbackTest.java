@@ -119,6 +119,7 @@ public class JtaTransactionRollbackTest {
         ordered.verify(transactionStore).rolledBack(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).rolledBack(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
     }
 
@@ -146,6 +147,7 @@ public class JtaTransactionRollbackTest {
         ordered.verify(transactionStore).rolledBack(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).rolledBack(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
     }
 
@@ -173,6 +175,7 @@ public class JtaTransactionRollbackTest {
         ordered.verify(transactionStore).rolledBack(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).rolledBack(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
     }
 
@@ -201,6 +204,7 @@ public class JtaTransactionRollbackTest {
         ordered.verify(transactionStore).rolledBack(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).rollbackFailed(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
     }
 
@@ -229,6 +233,7 @@ public class JtaTransactionRollbackTest {
         ordered.verify(transactionStore).rolledBack(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).rollbackFailed(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
     }
 
@@ -256,6 +261,7 @@ public class JtaTransactionRollbackTest {
         ordered.verify(transactionStore).rolledBack(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).rolledBack(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
     }
 
@@ -283,6 +289,7 @@ public class JtaTransactionRollbackTest {
         ordered.verify(transactionStore).rolledBack(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).rolledBack(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
     }
 
@@ -312,6 +319,7 @@ public class JtaTransactionRollbackTest {
         ordered.verify(transactionStore).rolledBack(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).rollbackFailed(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
     }
 
@@ -341,6 +349,7 @@ public class JtaTransactionRollbackTest {
         ordered.verify(transactionStore).rolledBack(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).rollbackFailed(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
     }
 }

@@ -87,6 +87,15 @@
             </xsd:annotation>
         </xsd:attribute>
 
+        <xsd:attribute name="store-all-states" type="xsd:string">
+            <xsd:annotation>
+                <xsd:documentation><![CDATA[
+                    If set to true, all transaction states (both globally and per branch) are stored.
+                    If set to false, only the minimum needed state is stored.
+                ]]></xsd:documentation>
+            </xsd:annotation>
+        </xsd:attribute>
+
         <xsd:attribute name="depends-on" type="xsd:string">
             <xsd:annotation>
                 <xsd:documentation><![CDATA[
@@ -115,7 +124,7 @@
         <xsd:attribute name="driver" type="xsd:string">
             <xsd:annotation>
                 <xsd:documentation><![CDATA[
-                    JDBC Driver.
+                    JDBC Driver (only need for pre JDBC 4.0 drivers).
                 ]]></xsd:documentation>
             </xsd:annotation>
         </xsd:attribute>
@@ -137,6 +146,15 @@
             <xsd:annotation>
                 <xsd:documentation><![CDATA[
                     JDBC Password.
+                ]]></xsd:documentation>
+            </xsd:annotation>
+        </xsd:attribute>
+
+        <xsd:attribute name="store-all-states" type="xsd:string">
+            <xsd:annotation>
+                <xsd:documentation><![CDATA[
+                    If set to true, all transaction states (both globally and per branch) are stored.
+                    If set to false, only the minimum needed state is stored.
                 ]]></xsd:documentation>
             </xsd:annotation>
         </xsd:attribute>

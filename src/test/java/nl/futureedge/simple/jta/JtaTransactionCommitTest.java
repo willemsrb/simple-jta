@@ -135,6 +135,7 @@ public class JtaTransactionCommitTest {
         ordered.verify(transactionStore).committed(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).committed(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
     }
 
@@ -167,6 +168,7 @@ public class JtaTransactionCommitTest {
         ordered.verify(transactionStore).rolledBack(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).rolledBack(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
     }
 
@@ -191,6 +193,7 @@ public class JtaTransactionCommitTest {
         ordered.verify(transactionStore).committed(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).committed(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
     }
 
@@ -215,6 +218,7 @@ public class JtaTransactionCommitTest {
         ordered.verify(transactionStore).committed(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).committed(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
     }
 
@@ -239,6 +243,7 @@ public class JtaTransactionCommitTest {
         ordered.verify(transactionStore).committed(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).committed(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
     }
 
@@ -264,6 +269,7 @@ public class JtaTransactionCommitTest {
         ordered.verify(transactionStore).committed(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).commitFailed(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
     }
 
@@ -290,6 +296,7 @@ public class JtaTransactionCommitTest {
         ordered.verify(transactionStore).committed(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).commitFailed(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
     }
 
@@ -317,6 +324,7 @@ public class JtaTransactionCommitTest {
         ordered.verify(transactionStore).committed(branchXidThree, "resourceThree");
         ordered.verify(transactionStore).commitFailed(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
     }
 }

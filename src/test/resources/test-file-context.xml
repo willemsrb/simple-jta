@@ -12,7 +12,7 @@
 
     <!-- TransactionManager -->
     <simple-jta:transaction-manager name="transactionManager" unique-name="test">
-        <simple-jta:file-transaction-store location="target/transaction-logs"/>
+        <simple-jta:file-transaction-store location="target/transaction-logs" store-all-states="true"/>
     </simple-jta:transaction-manager>
 
     <import resource="classpath:test-base-context.xml" />

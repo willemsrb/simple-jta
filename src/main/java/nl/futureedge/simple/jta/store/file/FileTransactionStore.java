@@ -1,18 +1,15 @@
 package nl.futureedge.simple.jta.store.file;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 import nl.futureedge.simple.jta.store.impl.BaseTransactionStore;
 import nl.futureedge.simple.jta.store.impl.PersistentTransaction;
 import nl.futureedge.simple.jta.store.impl.TransactionStatus;
-import nl.futureedge.simple.jta.xid.JtaXid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Required;
 
@@ -21,7 +18,7 @@ import org.springframework.beans.factory.annotation.Required;
  *
  * Creates a separate file for each transaction registering the xid and state; removing the file when an end-state (committed or rollback) has been reached.
  */
-public final class FileTransactionStore extends BaseTransactionStore implements InitializingBean, DisposableBean {
+public final class FileTransactionStore extends BaseTransactionStore implements InitializingBean {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FileTransactionStore.class);
 
@@ -41,16 +38,14 @@ public final class FileTransactionStore extends BaseTransactionStore implements 
     }
 
     @Override
-    public void destroy() throws Exception {
-        sequence.close();
+    public void doDestroy() {
+        try {
+            sequence.close();
+        } catch (IOException e) {
+            LOGGER.warn("Could not close sequence file", e);
+        }
         sequence = null;
 
-        synchronized (transactions) {
-            for (final FilePersistentTransaction transaction : transactions.values()) {
-                transaction.close();
-            }
-            transactions.clear();
-        }
     }
 
     /* ************************** */
@@ -70,7 +65,7 @@ public final class FileTransactionStore extends BaseTransactionStore implements 
             int end = file.getName().length() - FilePersistentTransaction.SUFFIX.length();
 
             long transactionId = Long.parseLong(file.getName().substring(begin, end));
-            final FilePersistentTransaction transaction = new FilePersistentTransaction(null, baseDirectory, transactionId);
+            final FilePersistentTransaction transaction = new FilePersistentTransaction(baseDirectory, transactionId);
             final TransactionStatus transactionStatus = transaction.getStatus();
 
             if (CLEANABLE.containsKey(transactionStatus)
@@ -98,24 +93,8 @@ public final class FileTransactionStore extends BaseTransactionStore implements 
         return sequence.nextSequence();
     }
 
-    private final Map<Long, FilePersistentTransaction> transactions = new HashMap<>();
-
     @Override
-    protected PersistentTransaction getPersistentTransaction(JtaXid xid) throws JtaTransactionStoreException {
-        long transactionId = xid.getTransactionId();
-        if (transactions.containsKey(transactionId)) {
-            return transactions.get(transactionId);
-        } else {
-            synchronized (transactions) {
-                if (!transactions.containsKey(transactionId)) {
-                    transactions.put(transactionId, new FilePersistentTransaction(this, baseDirectory, transactionId));
-                }
-                return transactions.get(transactionId);
-            }
-        }
-    }
-
-    void persistentTransactionRemoved(long transactionId) {
-        transactions.remove(transactionId);
+    protected PersistentTransaction createPersistentTransaction(long transactionId) throws JtaTransactionStoreException {
+        return new FilePersistentTransaction(baseDirectory, transactionId);
     }
 }

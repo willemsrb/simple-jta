@@ -45,4 +45,10 @@ public interface PersistentTransaction {
      * @throws JtaTransactionStoreException Thrown if the transaction store encounters an unexpected error condition
      */
     TransactionStatus getStatus() throws JtaTransactionStoreException;
+
+    /**
+     * Close all resources connected to this persistent transaction.
+     */
+    void close();
+
 }

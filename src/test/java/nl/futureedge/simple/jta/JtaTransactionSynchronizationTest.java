@@ -94,6 +94,8 @@ public class JtaTransactionSynchronizationTest {
         ordered.verify(transactionStore).committed(branchXidOne, "resourceOne");
         ordered.verify(transactionStore).committed(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
+
         // After completion
         ordered.verify(synchronization).afterCompletion(Status.STATUS_COMMITTED);
 
@@ -129,6 +131,8 @@ public class JtaTransactionSynchronizationTest {
         ordered.verify(transactionStore).rolledBack(branchXidOne, "resourceOne");
         ordered.verify(transactionStore).rolledBack(globalXid);
 
+        ordered.verify(transactionStore).transactionCompleted(transaction);
+
         // After completion
         ordered.verify(synchronization).afterCompletion(Status.STATUS_ROLLEDBACK);
 
@@ -158,6 +162,8 @@ public class JtaTransactionSynchronizationTest {
         ordered.verify(resourceOne).rollback(branchXidOne);
         ordered.verify(transactionStore).rolledBack(branchXidOne, "resourceOne");
         ordered.verify(transactionStore).rolledBack(globalXid);
+
+        ordered.verify(transactionStore).transactionCompleted(transaction);
 
         // After completion
         ordered.verify(synchronization).afterCompletion(Status.STATUS_ROLLEDBACK);

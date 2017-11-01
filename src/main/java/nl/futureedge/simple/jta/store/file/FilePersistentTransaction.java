@@ -1,6 +1,5 @@
 package nl.futureedge.simple.jta.store.file;
 
-import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -15,7 +14,7 @@ import nl.futureedge.simple.jta.store.impl.TransactionStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-final class FilePersistentTransaction implements PersistentTransaction, Closeable {
+final class FilePersistentTransaction implements PersistentTransaction {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FilePersistentTransaction.class);
 
@@ -26,7 +25,6 @@ final class FilePersistentTransaction implements PersistentTransaction, Closeabl
     private static final String RESOURCE_MANAGER_SEPARATOR = ":";
     private static final String ENTRY_SEPARATOR = "\n";
 
-    private final long transactionId;
     private final File file;
 
     private final RandomAccessFile raf;
@@ -34,12 +32,8 @@ final class FilePersistentTransaction implements PersistentTransaction, Closeabl
     private TransactionStatus status;
     private Map<String, TransactionStatus> resourceStatuses = new HashMap<>();
 
-    private final FileTransactionStore store;
-
-    FilePersistentTransaction(FileTransactionStore store, final File baseDirectory, final long transactionId) throws JtaTransactionStoreException {
-        this.transactionId = transactionId;
+    FilePersistentTransaction(final File baseDirectory, final long transactionId) throws JtaTransactionStoreException {
         this.file = new File(baseDirectory, PREFIX + transactionId + SUFFIX);
-        this.store = store;
         try {
             raf = new RandomAccessFile(file, "rws");
             readStatus();
@@ -103,28 +97,24 @@ final class FilePersistentTransaction implements PersistentTransaction, Closeabl
     }
 
     @Override
-    public void close() throws IOException {
-        raf.close();
-    }
-
-    @Override
-    public void remove() throws JtaTransactionStoreException {
+    public void close() {
         try {
-            close();
+            raf.close();
         } catch (final IOException e) {
             // Ignore
             LOGGER.warn("Could not close file access", e);
         }
+    }
+
+    @Override
+    public void remove() throws JtaTransactionStoreException {
+        close();
 
         try {
             Files.delete(Paths.get(file.toURI()));
         } catch (final IOException e) {
             // Ignore
             LOGGER.warn("Could not delete transaction file", e);
-        }
-
-        if (store != null) {
-            store.persistentTransactionRemoved(transactionId);
         }
     }
 

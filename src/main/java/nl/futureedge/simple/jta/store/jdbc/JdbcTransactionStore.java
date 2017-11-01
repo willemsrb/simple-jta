@@ -15,7 +15,6 @@ import nl.futureedge.simple.jta.store.jdbc.sql.HsqldbSqlTemplate;
 import nl.futureedge.simple.jta.store.jdbc.sql.JdbcSqlTemplate;
 import nl.futureedge.simple.jta.store.jdbc.sql.MysqlSqlTemplate;
 import nl.futureedge.simple.jta.store.jdbc.sql.PostgresqlSqlTemplate;
-import nl.futureedge.simple.jta.xid.JtaXid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -38,7 +37,7 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
     private String jdbcUser;
     private String jdbcPassword;
 
-    private JdbcHelper jdbc;
+    private JdbcConnectionPool pool;
     private JdbcSqlTemplate sqlTemplate;
 
     /**
@@ -90,10 +89,13 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
         this.sqlTemplate = sqlTemplate;
     }
 
+    /* ************************** */
+    /* *** STARTUP/SHUTDOWN ***** */
+    /* ************************** */
+
     @Override
     public void afterPropertiesSet() throws Exception {
-        jdbc = new JdbcHelper(jdbcDriver, jdbcUrl, jdbcUser, jdbcPassword);
-        jdbc.open();
+        pool = new JdbcConnectionPool(jdbcDriver, jdbcUrl, jdbcUser, jdbcPassword);
 
         if (sqlTemplate == null) {
             sqlTemplate = determineSqlTemplate(jdbcUrl);
@@ -102,14 +104,41 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
         if (create) {
             LOGGER.debug("Creating tables");
             try {
-                jdbc.executeInConnection(statement -> {
-                    createTransactionIdSequence(statement);
-                    createTransactionTable(statement);
-                    createResourceTable(statement);
-                });
+                JdbcHelper.doInConnection(pool, null,
+                        connection -> {
+                            JdbcHelper.doInStatement(connection,
+                                    statement -> {
+                                        createTransactionIdSequence(statement);
+                                        createTransactionTable(statement);
+                                        createResourceTable(statement);
+                                    });
+                            return null;
+                        }
+                );
             } catch (JtaTransactionStoreException e) {
                 LOGGER.info("Could not create transaction tables; ignoring exception...", e.getCause());
             }
+        }
+    }
+
+    private static JdbcSqlTemplate determineSqlTemplate(final String url) {
+        final Matcher urlMatcher = JDBC_URL_PATTERN.matcher(url);
+        final String driver = urlMatcher.matches() ? urlMatcher.group(1) : "unknown";
+
+        switch (driver) {
+            case "hsqldb":
+                LOGGER.info("Using HSQLDB SQL template (url detected)");
+                return new HsqldbSqlTemplate();
+            case "mariadb":
+            case "mysql":
+                LOGGER.info("Using Mysql SQL template (url detected)");
+                return new MysqlSqlTemplate();
+            case "postgresql":
+                LOGGER.info("Using PostgreSQL SQL template (url detected)");
+                return new PostgresqlSqlTemplate();
+            default:
+                LOGGER.info("Using default SQL template");
+                return new DefaultSqlTemplate();
         }
     }
 
@@ -138,30 +167,10 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
     }
 
     @Override
-    public void destroy() throws Exception {
-        jdbc.close();
+    public void doDestroy() {
+        pool.close();
     }
 
-    private static JdbcSqlTemplate determineSqlTemplate(final String url) {
-        final Matcher urlMatcher = JDBC_URL_PATTERN.matcher(url);
-        final String driver = urlMatcher.matches() ? urlMatcher.group(1) : "unknown";
-
-        switch (driver) {
-            case "hsqldb":
-                LOGGER.info("Using HSQLDB SQL template (url detected)");
-                return new HsqldbSqlTemplate();
-            case "mariadb":
-            case "mysql":
-                LOGGER.info("Using Mysql SQL template (url detected)");
-                return new MysqlSqlTemplate();
-            case "postgresql":
-                LOGGER.info("Using PostgreSQL SQL template (url detected)");
-                return new PostgresqlSqlTemplate();
-            default:
-                LOGGER.info("Using default SQL template");
-                return new DefaultSqlTemplate();
-        }
-    }
 
     /* ************************** */
     /* *** CLEANUP ************** */
@@ -169,8 +178,8 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
 
     @Override
     public void cleanup() throws JtaTransactionStoreException {
-        jdbc.doInConnection(connection -> {
-            jdbc.prepareAndExecuteQuery(
+        JdbcHelper.doInConnection(pool, null, connection -> {
+            JdbcHelper.prepareAndExecuteQuery(
                     connection,
                     sqlTemplate.selectTransactionIdAndStatus(),
                     transactionsStatement -> { /* No statement parameters */ },
@@ -191,7 +200,7 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
 
     private boolean isCleanable(final Connection connection, final Long transactionId, final Collection<TransactionStatus> allowedResourceStatuses)
             throws SQLException {
-        return jdbc.prepareAndExecuteQuery(
+        return JdbcHelper.prepareAndExecuteQuery(
                 connection,
                 sqlTemplate.selectResourceStatus(),
                 resourcesStatement -> resourcesStatement.setLong(1, transactionId),
@@ -207,12 +216,12 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
     }
 
     private void cleanTransaction(final Connection connection, final Long transactionId) throws SQLException {
-        jdbc.prepareAndExecuteUpdate(
+        JdbcHelper.prepareAndExecuteUpdate(
                 connection,
                 sqlTemplate.deleteResourceStatus(),
                 deleteResources -> deleteResources.setLong(1, transactionId)
         );
-        jdbc.prepareAndExecuteUpdate(
+        JdbcHelper.prepareAndExecuteUpdate(
                 connection,
                 sqlTemplate.deleteTransactionStatus(),
                 deleteTransaction -> deleteTransaction.setLong(1, transactionId)
@@ -226,8 +235,8 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
     @Override
     public long nextTransactionId() throws JtaTransactionStoreException {
         LOGGER.debug("nextTransactionId()");
-        return jdbc.doInConnection(
-                connection -> jdbc.prepareAndExecuteQuery(connection,
+        return JdbcHelper.doInConnection(pool, null,
+                connection -> JdbcHelper.prepareAndExecuteQuery(connection,
                         sqlTemplate.selectNextTransactionId(),
                         ps -> { /* No statement parameters */ },
                         resultSet -> {
@@ -240,8 +249,8 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
     }
 
     @Override
-    protected PersistentTransaction getPersistentTransaction(final JtaXid xid) throws JtaTransactionStoreException {
-        return new JdbcPersistentTransaction(jdbc, sqlTemplate, xid.getTransactionId());
+    protected PersistentTransaction createPersistentTransaction(final long transactionId) throws JtaTransactionStoreException {
+        return new JdbcPersistentTransaction(pool, sqlTemplate, transactionId);
     }
 
 }

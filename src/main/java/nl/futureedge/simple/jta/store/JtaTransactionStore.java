@@ -1,13 +1,14 @@
 package nl.futureedge.simple.jta.store;
 
 import javax.transaction.xa.XAException;
+import nl.futureedge.simple.jta.JtaSystemCallback;
 import nl.futureedge.simple.jta.xid.BranchJtaXid;
 import nl.futureedge.simple.jta.xid.GlobalJtaXid;
 
 /**
  * Store to 'stably' register the state of an exception.
  */
-public interface JtaTransactionStore {
+public interface JtaTransactionStore extends JtaSystemCallback {
 
     /**
      * Gives the next transaction id to use.

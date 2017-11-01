@@ -2,9 +2,11 @@ package nl.futureedge.simple.jta.store.impl;
 
 import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.transaction.xa.XAException;
+import nl.futureedge.simple.jta.JtaTransaction;
 import nl.futureedge.simple.jta.store.JtaTransactionStore;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 import nl.futureedge.simple.jta.xid.BranchJtaXid;
@@ -12,11 +14,12 @@ import nl.futureedge.simple.jta.xid.GlobalJtaXid;
 import nl.futureedge.simple.jta.xid.JtaXid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.DisposableBean;
 
 /**
  * Base transaction store implementation.
  */
-public abstract class BaseTransactionStore implements JtaTransactionStore {
+public abstract class BaseTransactionStore implements DisposableBean, JtaTransactionStore {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseTransactionStore.class);
 
@@ -50,129 +53,200 @@ public abstract class BaseTransactionStore implements JtaTransactionStore {
         // Do not clean TransactionStatus.ROLLBACK_FAILED
     }
 
+    private boolean hasPrepared;
+    private boolean storeAll;
+
+    public void setStoreAll(boolean storeAll) {
+        this.storeAll = storeAll;
+    }
 
     /**
      * Retrieves a delegate to stably store information about the transaction.
-     * @param xid xid
+     * @param transactionId transaction id
      * @return transaction store delegate for the given xid
      * @throws JtaTransactionStoreException Thrown if the transaction store encounters an unexpected error condition
      */
-    protected abstract PersistentTransaction getPersistentTransaction(JtaXid xid) throws JtaTransactionStoreException;
+    protected abstract PersistentTransaction createPersistentTransaction(final long transactionId) throws JtaTransactionStoreException;
+
+    private final Map<Long, PersistentTransaction> transactions = new HashMap<>();
+
+    private PersistentTransaction getPersistentTransaction(final JtaXid xid) throws JtaTransactionStoreException {
+        final long transactionId = xid.getTransactionId();
+        if (transactions.containsKey(transactionId)) {
+            return transactions.get(transactionId);
+        } else {
+            synchronized (transactions) {
+                if (!transactions.containsKey(transactionId)) {
+                    final PersistentTransaction transaction = createPersistentTransaction(transactionId);
+                    transactions.put(transactionId, transaction);
+
+                }
+                return transactions.get(transactionId);
+            }
+        }
+    }
 
     @Override
-    public boolean isCommitting(final BranchJtaXid xid) throws JtaTransactionStoreException {
+    public void transactionCompleted(final JtaTransaction transaction) {
+        final PersistentTransaction persistentTransaction;
+        synchronized (transactions) {
+            persistentTransaction = transactions.remove(transaction.getTransactionId());
+        }
+        if (persistentTransaction != null) {
+            persistentTransaction.close();
+        }
+    }
+
+    @Override
+    public final void destroy() throws Exception {
+        doDestroy();
+        synchronized (transactions) {
+            for (final PersistentTransaction transaction : transactions.values()) {
+                transaction.close();
+            }
+            transactions.clear();
+        }
+    }
+
+    protected abstract void doDestroy();
+
+
+    @Override
+    public final boolean isCommitting(final BranchJtaXid xid) throws JtaTransactionStoreException {
         LOGGER.debug("isCommitting(xid={})", xid);
         return TransactionStatus.COMMITTING.equals(getPersistentTransaction(xid).getStatus());
     }
 
+
     @Override
-    public void active(final GlobalJtaXid xid) throws JtaTransactionStoreException {
+    public final void active(final GlobalJtaXid xid) throws JtaTransactionStoreException {
         LOGGER.debug("active(xid={})", xid);
-        getPersistentTransaction(xid).save(TransactionStatus.ACTIVE);
+        if (storeAll) {
+            getPersistentTransaction(xid).save(TransactionStatus.ACTIVE);
+        }
     }
 
     @Override
-    public void active(final BranchJtaXid xid, final String resourceManager) throws JtaTransactionStoreException {
+    public final void active(final BranchJtaXid xid, final String resourceManager) throws JtaTransactionStoreException {
         LOGGER.debug("active(xid={}, resourceManager={})", xid, resourceManager);
-        getPersistentTransaction(xid).save(TransactionStatus.ACTIVE, xid.getBranchId(), resourceManager);
+        if (storeAll) {
+            getPersistentTransaction(xid).save(TransactionStatus.ACTIVE, xid.getBranchId(), resourceManager);
+        }
     }
 
     @Override
-    public void preparing(final GlobalJtaXid xid) throws JtaTransactionStoreException {
+    public final void preparing(final GlobalJtaXid xid) throws JtaTransactionStoreException {
         LOGGER.debug("preparing(xid={})", xid);
+        hasPrepared = true;
         getPersistentTransaction(xid).save(TransactionStatus.PREPARING);
     }
 
     @Override
-    public void preparing(final BranchJtaXid xid, final String resourceManager) throws JtaTransactionStoreException {
+    public final void preparing(final BranchJtaXid xid, final String resourceManager) throws JtaTransactionStoreException {
         LOGGER.debug("preparing(xid={}, resourceManager={})", xid, resourceManager);
-        getPersistentTransaction(xid).save(TransactionStatus.PREPARING, xid.getBranchId(), resourceManager);
+        if (storeAll) {
+            getPersistentTransaction(xid).save(TransactionStatus.PREPARING, xid.getBranchId(), resourceManager);
+        }
     }
 
     @Override
-    public void prepared(final GlobalJtaXid xid) throws JtaTransactionStoreException {
+    public final void prepared(final GlobalJtaXid xid) throws JtaTransactionStoreException {
         LOGGER.debug("prepared(xid={})", xid);
-        getPersistentTransaction(xid).save(TransactionStatus.PREPARED);
+        if (storeAll) {
+            getPersistentTransaction(xid).save(TransactionStatus.PREPARED);
+        }
     }
 
     @Override
-    public void prepared(final BranchJtaXid xid, final String resourceManager) throws JtaTransactionStoreException {
+    public final void prepared(final BranchJtaXid xid, final String resourceManager) throws JtaTransactionStoreException {
         LOGGER.debug("prepared(xid={}, resourceManager={})", xid, resourceManager);
         getPersistentTransaction(xid).save(TransactionStatus.PREPARED, xid.getBranchId(), resourceManager);
     }
 
     @Override
-    public void committing(final GlobalJtaXid xid) throws JtaTransactionStoreException {
+    public final void committing(final GlobalJtaXid xid) throws JtaTransactionStoreException {
         LOGGER.debug("committing(xid={})", xid);
         getPersistentTransaction(xid).save(TransactionStatus.COMMITTING);
     }
 
     @Override
-    public void committing(final BranchJtaXid xid, final String resourceManager) throws JtaTransactionStoreException {
+    public final void committing(final BranchJtaXid xid, final String resourceManager) throws JtaTransactionStoreException {
         LOGGER.debug("committing(xid={}, resourceManager={})", xid, resourceManager);
-        getPersistentTransaction(xid).save(TransactionStatus.COMMITTING, xid.getBranchId(), resourceManager);
+        if (storeAll) {
+            getPersistentTransaction(xid).save(TransactionStatus.COMMITTING, xid.getBranchId(), resourceManager);
+        }
     }
 
     @Override
-    public void committed(final GlobalJtaXid xid) throws JtaTransactionStoreException {
+    public final void committed(final GlobalJtaXid xid) throws JtaTransactionStoreException {
         LOGGER.debug("committed(xid={})", xid);
         final PersistentTransaction persistentTransaction = getPersistentTransaction(xid);
-        persistentTransaction.save(TransactionStatus.COMMITTED);
+        if (storeAll) {
+            persistentTransaction.save(TransactionStatus.COMMITTED);
+        }
         persistentTransaction.remove();
     }
 
     @Override
-    public void committed(final BranchJtaXid xid, final String resourceManager) throws JtaTransactionStoreException {
+    public final void committed(final BranchJtaXid xid, final String resourceManager) throws JtaTransactionStoreException {
         LOGGER.debug("committed(xid={}, resourceManager={})", xid, resourceManager);
         getPersistentTransaction(xid).save(TransactionStatus.COMMITTED, xid.getBranchId(), resourceManager);
     }
 
     @Override
-    public void commitFailed(final GlobalJtaXid xid) throws JtaTransactionStoreException {
+    public final void commitFailed(final GlobalJtaXid xid) throws JtaTransactionStoreException {
         LOGGER.debug("commitFailed(xid={})", xid);
         getPersistentTransaction(xid).save(TransactionStatus.COMMIT_FAILED);
     }
 
     @Override
-    public void commitFailed(final BranchJtaXid xid, final String resourceManager, final XAException cause) throws JtaTransactionStoreException {
+    public final void commitFailed(final BranchJtaXid xid, final String resourceManager, final XAException cause) throws JtaTransactionStoreException {
         LOGGER.debug("commitFailed(xid={}, resourceManager={})", xid, resourceManager, cause);
         getPersistentTransaction(xid).save(TransactionStatus.COMMIT_FAILED, xid.getBranchId(), resourceManager, cause);
     }
 
     @Override
-    public void rollingBack(final GlobalJtaXid xid) throws JtaTransactionStoreException {
+    public final void rollingBack(final GlobalJtaXid xid) throws JtaTransactionStoreException {
         LOGGER.debug("rollingBack(xid={})", xid);
-        getPersistentTransaction(xid).save(TransactionStatus.ROLLING_BACK);
+        if (hasPrepared || storeAll) {
+            getPersistentTransaction(xid).save(TransactionStatus.ROLLING_BACK);
+        }
     }
 
     @Override
-    public void rollingBack(final BranchJtaXid xid, final String resourceManager) throws JtaTransactionStoreException {
+    public final void rollingBack(final BranchJtaXid xid, final String resourceManager) throws JtaTransactionStoreException {
         LOGGER.debug("rollingBack(xid={}, resourceManager={})", xid, resourceManager);
-        getPersistentTransaction(xid).save(TransactionStatus.ROLLING_BACK, xid.getBranchId(), resourceManager);
+        if (storeAll) {
+            getPersistentTransaction(xid).save(TransactionStatus.ROLLING_BACK, xid.getBranchId(), resourceManager);
+        }
     }
 
     @Override
-    public void rolledBack(final GlobalJtaXid xid) throws JtaTransactionStoreException {
+    public final void rolledBack(final GlobalJtaXid xid) throws JtaTransactionStoreException {
         LOGGER.debug("rolledBack(xid={})", xid);
         final PersistentTransaction persistentTransaction = getPersistentTransaction(xid);
-        persistentTransaction.save(TransactionStatus.ROLLED_BACK);
+        if (storeAll) {
+            persistentTransaction.save(TransactionStatus.ROLLED_BACK);
+        }
         persistentTransaction.remove();
     }
 
     @Override
-    public void rolledBack(final BranchJtaXid xid, final String resourceManager) throws JtaTransactionStoreException {
+    public final void rolledBack(final BranchJtaXid xid, final String resourceManager) throws JtaTransactionStoreException {
         LOGGER.debug("rolledBack(xid={}, resourceManager={})", xid, resourceManager);
-        getPersistentTransaction(xid).save(TransactionStatus.ROLLED_BACK, xid.getBranchId(), resourceManager);
+        if (hasPrepared || storeAll) {
+            getPersistentTransaction(xid).save(TransactionStatus.ROLLED_BACK, xid.getBranchId(), resourceManager);
+        }
     }
 
     @Override
-    public void rollbackFailed(final GlobalJtaXid xid) throws JtaTransactionStoreException {
+    public final void rollbackFailed(final GlobalJtaXid xid) throws JtaTransactionStoreException {
         LOGGER.debug("rollbackFailed(xid={})", xid);
         getPersistentTransaction(xid).save(TransactionStatus.ROLLBACK_FAILED);
     }
 
     @Override
-    public void rollbackFailed(final BranchJtaXid xid, final String resourceManager, final XAException cause) throws JtaTransactionStoreException {
+    public final void rollbackFailed(final BranchJtaXid xid, final String resourceManager, final XAException cause) throws JtaTransactionStoreException {
         LOGGER.debug("rollbackFailed(xid={}, resourceManager={})", xid, resourceManager, cause);
         getPersistentTransaction(xid).save(TransactionStatus.ROLLBACK_FAILED, xid.getBranchId(), resourceManager, cause);
     }

@@ -52,7 +52,7 @@ public class XAConnectionAdapterTest {
         subject.close();
         Mockito.verifyNoMoreInteractions(xaConnection);
 
-        subject.transactionCompleted();
+        subject.transactionCompleted(null);
         Mockito.verify(xaConnection).close();
         Mockito.verifyNoMoreInteractions(xaConnection);
     }
@@ -63,7 +63,7 @@ public class XAConnectionAdapterTest {
         subject.close();
         Mockito.verifyNoMoreInteractions(xaConnection);
 
-        subject.transactionCompleted();
+        subject.transactionCompleted(null);
         Mockito.verify(xaConnection).close();
         Mockito.verifyNoMoreInteractions(xaConnection);
     }

@@ -55,7 +55,7 @@ final class XAConnectionAdapter implements Connection, JtaSystemCallback {
     /* ******************************************************** */
 
     @Override
-    public void transactionCompleted() {
+    public void transactionCompleted(final JtaTransaction transaction) {
         if (closeAfterCompletion) {
             try {
                 LOGGER.debug("Closing connection after completion of transaction");
