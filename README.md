@@ -192,6 +192,7 @@ The following states are always stored for transactions (globally or per branch,
 | Both  | ROLLBACK_FAILED | PROTOCOL ERROR: Always recorded, a resource could not be rolled back |
 | (*) | | Actually removes all transaction information from the store |
 | (\*\*) | | Only stored when the transaction had started preparing (on recovery an unknown transaction is always rolled back) |
+
 *Note: The COMMIT_FAILED and ROLLBACK_FAILED should not happen as the XA protocol in theory does not allow it (a resource should always be able to commit after successfully preparing and a resource should always be able to rollback).*
 
 
