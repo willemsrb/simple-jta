@@ -70,13 +70,16 @@ final class JdbcConnectionPool {
      * @throws JtaTransactionStoreException Thrown when a new connection could not be made
      */
     Connection borrowConnection() throws JtaTransactionStoreException {
+        final Connection result;
         synchronized (available) {
             if (available.isEmpty()) {
-                return createConnection();
+                result = null;
             } else {
-                return available.remove(0);
+                result = available.remove(0);
             }
         }
+
+        return result == null ? createConnection() : result;
     }
 
     /**
