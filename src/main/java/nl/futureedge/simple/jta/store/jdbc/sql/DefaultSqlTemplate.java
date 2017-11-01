@@ -95,7 +95,7 @@ public class DefaultSqlTemplate implements JdbcSqlTemplate {
     }
 
     @Override
-    public String selectTransactionIdAndStatus() {
+    public final String selectTransactionIdAndStatus() {
         return selectTransactionIdAndStatus;
     }
 

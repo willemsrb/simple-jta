@@ -53,10 +53,11 @@ public abstract class BaseTransactionStore implements DisposableBean, JtaTransac
         // Do not clean TransactionStatus.ROLLBACK_FAILED
     }
 
-    private boolean hasPrepared;
+    private final Map<Long, PersistentTransaction> transactions = new HashMap<>();
+
     private boolean storeAll;
 
-    public void setStoreAll(boolean storeAll) {
+    public void setStoreAll(final boolean storeAll) {
         this.storeAll = storeAll;
     }
 
@@ -67,8 +68,6 @@ public abstract class BaseTransactionStore implements DisposableBean, JtaTransac
      * @throws JtaTransactionStoreException Thrown if the transaction store encounters an unexpected error condition
      */
     protected abstract PersistentTransaction createPersistentTransaction(final long transactionId) throws JtaTransactionStoreException;
-
-    private final Map<Long, PersistentTransaction> transactions = new HashMap<>();
 
     private PersistentTransaction getPersistentTransaction(final JtaXid xid) throws JtaTransactionStoreException {
         final long transactionId = xid.getTransactionId();
@@ -137,7 +136,6 @@ public abstract class BaseTransactionStore implements DisposableBean, JtaTransac
     @Override
     public final void preparing(final GlobalJtaXid xid) throws JtaTransactionStoreException {
         LOGGER.debug("preparing(xid={})", xid);
-        hasPrepared = true;
         getPersistentTransaction(xid).save(TransactionStatus.PREPARING);
     }
 
@@ -208,7 +206,7 @@ public abstract class BaseTransactionStore implements DisposableBean, JtaTransac
     @Override
     public final void rollingBack(final GlobalJtaXid xid) throws JtaTransactionStoreException {
         LOGGER.debug("rollingBack(xid={})", xid);
-        if (hasPrepared || storeAll) {
+        if (transactions.containsKey(xid.getTransactionId()) || storeAll) {
             getPersistentTransaction(xid).save(TransactionStatus.ROLLING_BACK);
         }
     }
@@ -234,7 +232,7 @@ public abstract class BaseTransactionStore implements DisposableBean, JtaTransac
     @Override
     public final void rolledBack(final BranchJtaXid xid, final String resourceManager) throws JtaTransactionStoreException {
         LOGGER.debug("rolledBack(xid={}, resourceManager={})", xid, resourceManager);
-        if (hasPrepared || storeAll) {
+        if (transactions.containsKey(xid.getTransactionId()) || storeAll) {
             getPersistentTransaction(xid).save(TransactionStatus.ROLLED_BACK, xid.getBranchId(), resourceManager);
         }
     }

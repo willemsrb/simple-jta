@@ -171,7 +171,6 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
         pool.close();
     }
 
-
     /* ************************** */
     /* *** CLEANUP ************** */
     /* ************************** */
@@ -252,5 +251,4 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
     protected PersistentTransaction createPersistentTransaction(final long transactionId) throws JtaTransactionStoreException {
         return new JdbcPersistentTransaction(pool, sqlTemplate, transactionId);
     }
-
 }

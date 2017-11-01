@@ -26,12 +26,11 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
     private Connection reservedConnection;
     private boolean hasSaved;
 
-    public JdbcPersistentTransaction(final JdbcConnectionPool pool, final JdbcSqlTemplate sqlTemplate, final long transactionId) {
+    JdbcPersistentTransaction(final JdbcConnectionPool pool, final JdbcSqlTemplate sqlTemplate, final long transactionId) {
         this.pool = pool;
         this.sqlTemplate = sqlTemplate;
         this.transactionId = transactionId;
     }
-
 
     @Override
     public void save(final TransactionStatus status) throws JtaTransactionStoreException {
@@ -125,7 +124,7 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
     @Override
     public void close() {
         if (reservedConnection != null) {
-            pool.releaseConnection(reservedConnection);
+            pool.returnConnection(reservedConnection);
             reservedConnection = null;
         }
     }
