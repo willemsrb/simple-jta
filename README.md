@@ -8,14 +8,14 @@ Just for that purpose, Simple JTA was created.
 ## What does it do?
 Simple JTA, is just that: a simple JTA transaction manager. It does not come with any bells and whistles, it just does the job it was designed to do: it manages the transactions for a single (local) application (component).
 
-## What is not supported?
+### What is not supported?
 Because Simple JTA just implements the base requirements some features have been skipped:
 - Enlisting arbitrary (eg. not via the Simple JTA datasource or connection factory adapters) XA resources (`javax.transaction.Transaction#enlistResource`) is not supported.
 - Transaction suspension (`javax.transaction.TransactionManager#suspend` and `javax.transaction.TransactionManager#resume`) is not supported
 - Nested transactions (`javax.transaction.TransactionManager#begin` when another transaction is already started) are not supported
 - JMS (durable) connection consumers (`javax.jms.Connection#createConnectionConsumer` and `javax.jms.Connection#createDurableConnectionConsumer`) are not supported
 
-## Undocumented features
+### Undocumented features
 The following undocumented features (or expected inner workings) were introduced during testing:
 - Reusing physical database connections within a transaction; when `java.sql.Connection#close` has been called and the transaction has not been ended, a call to `java.sql.DataSource#getConnection` will 're-open' and return the same database connection.
 - Joining JTA resources (`javax.transaction.xa.XAResource#start(Xid,TMJOIN)`) is disabled by default
@@ -51,15 +51,17 @@ The Simple JTA transaction manager needs two things configured to be able to wor
     </bean>
 </beans>
 ```
-#####nl.futureedge.simple.jta.JtaTransactionManager properties
+
+The transaction store of choice for Simple JTA is a database. Why? Because all (our) applications already have a fully functioning, reliable and properly backed up database any way. We don't want to complicate thing by having a set of files (on each application server) that needs to be backed up (in sync) with that.
+
+
+##### nl.futureedge.simple.jta.JtaTransactionManager properties
 | Property | Explanation | Required |
 |---|---|---|
 | uniqueName | The unique name to use for this transaction manager | Yes |
 | jtaTransactionStore | Transaction store to 'stably' store transaction information | Yes (Autowired) |
 
-The transaction store of choice for Simple JTA is a database. Why? Because all (our) applications already have a fully functioning, reliable and properly backed up database any way. We don't want to complicate thing by having a set of files (on each application server) that needs to be backed up (in sync) with that.
-
-#####nl.futureedge.simple.jta.store.jdbc.JdbcTransactionStore properties
+##### nl.futureedge.simple.jta.store.jdbc.JdbcTransactionStore properties
 | Property | Explanation | Required |
 |---|---|---|
 | create | If true, the transaction store will try to create the database objects on startup | No (default false) |
@@ -70,7 +72,7 @@ The transaction store of choice for Simple JTA is a database. Why? Because all (
 | sqlTemplate | SQL template to use; if left empty the transaction store will try to detect the database type based on the JDBC url and else use a SQL-2003 compatible default | No |
 | storeAll | If true, the transaction store will record all transaction states; else, the store will only record the minimum state | No (default false) |
 
-#####nl.futureedge.simple.jta.store.file.FileTransactionStore properties
+##### nl.futureedge.simple.jta.store.file.FileTransactionStore properties
 | Property | Explanation | Required |
 |---|---|---|
 | baseDirectory | The base directory for the transaction logs | Yes |
@@ -92,7 +94,8 @@ A JDBC datasource is not suited to participate in distributed (JTA) transactions
         <property name="xaDataSource" ref="xaDataSource" />
     </bean>
 ```
-#####nl.futureedge.simple.jta.jdbc.XaDataSourceAdapter properties
+
+##### nl.futureedge.simple.jta.jdbc.XaDataSourceAdapter properties
 | Property | Explanation | Required |
 |---|---|---|
 | uniqueName | The unique name to use for this resource manager | Yes |
@@ -114,7 +117,8 @@ As with the database connection a JMS connection factory is not suited to partic
         <property name="xaConnectionFactory" ref="xaConnectionFactory" />
     </bean>
 ```
-#####nl.futureedge.simple.jta.jms.XAConnectionFactoryAdapter properties
+
+##### nl.futureedge.simple.jta.jms.XAConnectionFactoryAdapter properties
 | Property | Explanation | Required |
 |---|---|---|
 | uniqueName | The unique name to use for this resource manager | Yes |
@@ -178,18 +182,20 @@ The following states are always stored for transactions (globally or per branch,
 |---|---|---|
 | Global | PREPARING | Identification of the global transaction |
 | Branch | PREPARED | This locks the changes to the resource |
-| Global | COMMITTING | Records the decision to commit the transaction |
+| Global | COMMITTING | **The decision to commit the transaction** |
 | Branch | COMMITTED | Signifies the changes in the resource have been succesfully committed |
 | Global(*)| COMMITTED | The transaction has completed succesfully by committing the changes |
-| Global (**) | ROLLING_BACK | Records the decision to rollback the transaction |
-| Branch (**) | ROLLED_BACK| Records the decision to rollback the transaction |
+| Global (\*\*) | ROLLING_BACK | **The decision to rollback the transaction** |
+| Branch (\*\*) | ROLLED_BACK| Records the decision to rollback the transaction |
 | Global (*) | ROLLED_BACK| The transaction has completed succesfully by rolling back the changes |
-| Both  | COMMIT_FAILED | Always recorded |
-| Both  | ROLLBACK_FAILED | Always recorded |
+| Both  | COMMIT_FAILED | PROTOCOL ERROR: Always recorded, a resource could not be committed after succesfully preparing |
+| Both  | ROLLBACK_FAILED | PROTOCOL ERROR: Always recorded, a resource could not be rolled back |
 | (*) | | Actually removes all transaction information from the store |
-| (**) | | Only stored when the transaction had started preparing (on recovery an unknown transaction is always rolled back) |
+| (\*\*) | | Only stored when the transaction had started preparing (on recovery an unknown transaction is always rolled back) |
+*Note: The COMMIT_FAILED and ROLLBACK_FAILED should not happen as the XA protocol in theory does not allow it (a resource should always be able to commit after successfully preparing and a resource should always be able to rollback).*
 
-When the transaction store is configured, all states can be recorded :
+
+When the transaction store is configured to record all states the following are stored:
 
 | State | Global | Branch (per resource) |
 |---|---|---|
@@ -198,12 +204,10 @@ When the transaction store is configured, all states can be recorded :
 | PREPARED | After all resources have been prepared successfully | After the resource has been prepared successfully |
 | COMMITTING | **The decision to commit the transaction** | Before committing the resource |
 | COMMITTED | After all resources have been committed | After the resource has been committed successfully |
-| COMMIT_FAILED | PROTOCOL ERROR: Commit failed | PROTOCOL ERROR: when the resource has been prepared successfully, but could not be committed.
+| COMMIT_FAILED | PROTOCOL ERROR: Unexpected failure| PROTOCOL ERROR: a resource could not be committed after succesfully preparing |
 | ROLLING_BACK | **The decision to rollback the transaction** | Before rolling back the resource |
 | ROLLED_BACK | After all resources have been rolled back | After the resource has been rolled back successfully |
-| ROLLBACK_FAILED | PROTOCOL ERROR: Rollback failed | PROTOCOL ERROR: when the resource could not be rolled back successfully |
-
-The COMMIT_FAILED and ROLLBACK_FAILED should not happen as the XA protocol in theory does not allow it (a resource should always be able to commit after successfully preparing and a resource should always be able to rollback).
+| ROLLBACK_FAILED | PROTOCOL ERROR: Unexpected failure | PROTOCOL ERROR: a resource could not be rolled back |
 
 ## Further reading
 - [Distributed Transaction Processing: The XA Specification](http://pubs.opengroup.org/onlinepubs/009680699/toc.pdf)
