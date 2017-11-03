@@ -6,10 +6,12 @@
     <formats>
         <format>jar</format>
     </formats>
+    <includeBaseDirectory>false</includeBaseDirectory>
 
     <fileSets>
         <fileSet>
-            <directory>${project.build.directory}/generated-sql/</directory>
+            <directory>${project.build.directory}/generated-sql</directory>
+            <outputDirectory>./</outputDirectory>
             <includes>
                 <include>*.sql</include>
             </includes>
