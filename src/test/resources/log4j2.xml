@@ -12,7 +12,7 @@
             <AppenderRef ref="Console"/>
         </AsyncRoot>
 
-        <AsyncLogger name="nl.futureedge" level="TRACE"/>
+        <AsyncLogger name="nl.futureedge.simple.jta" level="TRACE"/>
         <AsyncLogger name="org.springframework" level="DEBUG"/>
     </Loggers>
 </Configuration>
