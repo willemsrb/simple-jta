@@ -9,7 +9,7 @@ import java.util.Map;
 
 public final class GenerateSqlFiles {
 
-    public static final Map<String, JdbcSqlTemplate> TEMPLATES = new HashMap<>();
+    private static final Map<String, JdbcSqlTemplate> TEMPLATES = new HashMap<>();
 
     static {
         TEMPLATES.put("default", new DefaultSqlTemplate());

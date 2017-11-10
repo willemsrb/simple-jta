@@ -187,9 +187,9 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
         LOGGER.trace("setTransactionTimeout(seconds={})", seconds);
         timeoutInSeconds.set(seconds);
 
-        final JtaTransaction currentTransaction = getTransaction();
-        if (currentTransaction != null) {
-            currentTransaction.setTransactionTimeout(seconds);
+        final JtaTransaction transaction = getTransaction();
+        if (transaction != null) {
+            transaction.setTransactionTimeout(seconds);
         }
     }
 
