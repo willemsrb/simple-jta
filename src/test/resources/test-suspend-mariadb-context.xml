@@ -2,31 +2,33 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:jdbc="http://www.springframework.org/schema/jdbc"
        xmlns:simple-jta="http://www.future-edge.nl/schema/simple/jta"
        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
                            http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+                           http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
                            http://www.future-edge.nl/schema/simple/jta http://www.future-edge.nl/schema/simple/jta/simple-jta.xsd">
 
-    <context:property-placeholder/>
+    <context:property-placeholder location="mariadb.properties"/>
     <context:annotation-config/>
 
+    <!-- TransactionManager -->
+    <simple-jta:transaction-manager name="transactionManager" unique-name="test">
+        <simple-jta:jdbc-transaction-store create="true" url="jdbc:hsqldb:mem:trans" user="sa" password=""/>
+    </simple-jta:transaction-manager>
+
     <!-- DataSource -->
-    <bean name="xaDataSource" class="org.hsqldb.jdbc.pool.JDBCXADataSource">
-        <property name="url" value="jdbc:hsqldb:hsql://localhost:${test.database.port}/test"/>
-        <property name="user" value="sa"/>
-        <property name="password" value=""/>
+    <bean name="xaDataSource" class="org.mariadb.jdbc.MariaDbDataSource">
+        <property name="url" value="jdbc:mariadb://localhost:${mariadb.port}/trans"/>
+        <property name="user" value="simple"/>
+        <property name="password" value="jta"/>
     </bean>
 
-    <simple-jta:data-source name="dataSource" unique-name="database1" xa-data-source="xaDataSource"
-                            supports-join="false" supports-suspend="false" allow-non-transacted-connections="warn"/>
+    <simple-jta:data-source name="dataSource" unique-name="database1" xa-data-source="xaDataSource"/>
 
-    <!-- ConnectionFactory -->
-    <bean name="xaConnectionFactory" class="org.apache.activemq.ActiveMQXAConnectionFactory">
-        <property name="brokerURL" value="tcp://localhost:${test.broker.port}"/>
-    </bean>
-
-    <simple-jta:connection-factory name="connectionFactory" unique-name="message1" xa-connection-factory="xaConnectionFactory"
-                                   supports-join="false" supports-suspend="false" />
+    <jdbc:initialize-database ignore-failures="DROPS" data-source="dataSource">
+        <jdbc:script location="classpath:sql/test-ddl.sql" encoding="UTF-8"/>
+    </jdbc:initialize-database>
 
     <!-- Templates -->
 
@@ -36,10 +38,6 @@
 
     <bean name="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
         <property name="dataSource" ref="dataSource"/>
-    </bean>
-
-    <bean name="jmsTemplate" class="org.springframework.jms.core.JmsTemplate">
-        <property name="connectionFactory" ref="connectionFactory"/>
     </bean>
 </beans>
 

@@ -32,7 +32,10 @@ public final class XADataSourceAdapter implements DataSource, InitializingBean {
     private String uniqueName;
     private XADataSource xaDataSource;
     private JtaTransactionManager jtaTransactionManager;
+
     private boolean supportsJoin = false;
+    private boolean supportsSuspend = false;
+    private AllowNonTransactedConnections allowNonTransactedConnections = AllowNonTransactedConnections.WARN;
 
 
     /**
@@ -74,10 +77,27 @@ public final class XADataSourceAdapter implements DataSource, InitializingBean {
         this.supportsJoin = supportsJoin;
     }
 
+    /**
+     * Enables support for the JTA resource suspension (default disabled).
+     * @param supportsSuspend true, if the resource correctly supports suspend/resume
+     */
+    public void setSupportsSuspend(final boolean supportsSuspend) {
+        this.supportsSuspend = supportsSuspend;
+    }
+
+    /**
+     * Determines if connections outside a transaction are allowed (yes, no, warn).
+     * @param allowNonTransactedConnections allowed non-transacted connections
+     */
+    public void setAllowNonTransactedConnections(final String allowNonTransactedConnections) {
+        this.allowNonTransactedConnections = allowNonTransactedConnections == null ? AllowNonTransactedConnections.WARN :
+                AllowNonTransactedConnections.valueOf(allowNonTransactedConnections.toUpperCase());
+    }
+
     @Override
     public void afterPropertiesSet() throws Exception {
         // Execute recovery
-        jtaTransactionManager.recover(new XAResourceAdapter(uniqueName, false, xaDataSource.getXAConnection().getXAResource()));
+        jtaTransactionManager.recover(new XAResourceAdapter(uniqueName, false, false, xaDataSource.getXAConnection().getXAResource()));
     }
 
     /* ******************************************************** */
@@ -130,11 +150,11 @@ public final class XADataSourceAdapter implements DataSource, InitializingBean {
     /* ******************************************************** */
     /* ******************************************************** */
 
-    private Object createConnectionKey(String username) {
+    private Object createConnectionKey(final String username) {
         return "user-" + username;
     }
 
-    private XAConnectionAdapter reopenConnectionIfPossible(List<XAConnectionAdapter> connections) throws SQLException {
+    private XAConnectionAdapter reopenConnectionIfPossible(final List<XAConnectionAdapter> connections) throws SQLException {
         if (connections != null) {
             for (final XAConnectionAdapter connection : connections) {
                 if (connection.reopen()) {
@@ -157,12 +177,20 @@ public final class XADataSourceAdapter implements DataSource, InitializingBean {
         return getConnection(createConnectionKey(username), () -> xaDataSource.getXAConnection(username, password));
     }
 
-    private Connection getConnection(Object connectionKey, XaConnectionSupplier xaConnectionSupplier) throws SQLException {
+    private Connection getConnection(final Object connectionKey, final XaConnectionSupplier xaConnectionSupplier) throws SQLException {
         final JtaTransaction transaction = jtaTransactionManager.getTransaction();
 
         if (transaction == null) {
-            LOGGER.warn("XADataSource returned connection outside transaction");
-            return xaConnectionSupplier.getXAConnection().getConnection();
+            if (AllowNonTransactedConnections.NO == allowNonTransactedConnections) {
+                throw new SQLException("Connection outside transaction not allowed");
+            } else {
+                if (AllowNonTransactedConnections.WARN == allowNonTransactedConnections) {
+                    LOGGER.warn("XADataSource returned connection outside transaction");
+                } else {
+                    LOGGER.debug("XADataSource returned connection outside transaction");
+                }
+                return xaConnectionSupplier.getXAConnection().getConnection();
+            }
         }
 
         final List<XAConnectionAdapter> connections = transaction.getConnections(connectionKey);
@@ -178,23 +206,31 @@ public final class XADataSourceAdapter implements DataSource, InitializingBean {
 
         // Enlist the xa resource in the current transaction
         try {
-            transaction.enlistResource(new XAResourceAdapter(uniqueName, supportsJoin, xaConnection.getXAResource()));
+            transaction.enlistResource(new XAResourceAdapter(uniqueName, supportsJoin, supportsSuspend, xaConnection.getXAResource()));
         } catch (IllegalStateException | RollbackException | SystemException e) {
             LOGGER.debug("Could not enlist connection to transaction", e);
             throw new SQLException("Could not enlist connection to transaction", e);
         }
 
         // Wrap and register connection
-        final XAConnectionAdapter connection = new XAConnectionAdapter(xaConnection, jtaTransactionManager);
+        final XAConnectionAdapter connection = new XAConnectionAdapter(xaConnection);
         transaction.registerSystemCallback(connection);
         transaction.registerConnection(connectionKey, connection);
 
         return connection;
     }
 
+    /**
+     * XA Connection supplier.
+     */
     @FunctionalInterface
     private interface XaConnectionSupplier {
 
+        /**
+         * @return xa connection
+         * @throws SQLException when the supplier encounters an unexpected condition
+         */
         XAConnection getXAConnection() throws SQLException;
     }
+
 }

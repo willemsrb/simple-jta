@@ -43,7 +43,7 @@ public class JtaTransactionSynchronizationTest {
         globalXid = ReflectionTestUtils.getField(transaction, "globalXid");
 
         resourceOne = Mockito.mock(XAResource.class);
-        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, resourceOne));
+        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, false, resourceOne));
 
         synchronization = Mockito.mock(Synchronization.class);
         transaction.registerSynchronization(synchronization);

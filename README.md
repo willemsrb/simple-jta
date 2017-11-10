@@ -11,7 +11,6 @@ Simple JTA, is just that: a simple JTA transaction manager. It does not come wit
 ### What is not supported?
 Because Simple JTA just implements the base requirements some features have been skipped:
 - Enlisting arbitrary (eg. not via the Simple JTA datasource or connection factory adapters) XA resources (`javax.transaction.Transaction#enlistResource`) is not supported.
-- Transaction suspension (`javax.transaction.TransactionManager#suspend` and `javax.transaction.TransactionManager#resume`) is not supported
 - Nested transactions (`javax.transaction.TransactionManager#begin` when another transaction is already started) are not supported
 - JMS (durable) connection consumers (`javax.jms.Connection#createConnectionConsumer` and `javax.jms.Connection#createDurableConnectionConsumer`) are not supported
 
@@ -92,6 +91,9 @@ A JDBC datasource is not suited to participate in distributed (JTA) transactions
     <bean name="dataSource" class="nl.futureedge.simple.jta.jdbc.XADataSourceAdapter">
         <property name="uniqueName" value="database1" />
         <property name="xaDataSource" ref="xaDataSource" />
+        <property name="supportsJoin" value="false" />
+        <property name="supportsSuspend" value="false" />
+        <property name="allowNonTransactedConnections" value="warn" />
     </bean>
 ```
 
@@ -102,6 +104,13 @@ A JDBC datasource is not suited to participate in distributed (JTA) transactions
 | xaDataSource | The vendor provided XA DataSource to adapt | Yes |
 | jtaTransactionManager | The JtaTransactionManager this datasource is managed by (for recovery) | Yes (Autowired) |
 | supportsJoin | Set to true if this resource correctly supports joining partial transactions | No (default false) |
+| supportsSuspend | Set to true if this resource supports transaction suspension | No (default false) |
+| allowNonTransactedConnections | Allow connections outside a transaction (yes, no or warn) | No (default warn) |
+
+##### Enlisting the resource
+The XA Resource is enlisted in the transaction when `DataSource#getConnection` is called to open a connection.
+When a connection is requested 'outside' a transaction the adapter will return an unmanaged connection. A connection is closed when to transaction is committed or rolled back
+
 
 ### Configuring the messaging connection
 As with the database connection a JMS connection factory is not suited to participate in distributed (JTA) transactions. Simple JTA provides an adapter that wraps a JMS XA connection factory, handles the transaciton manager methods and exposes a 'normal' JMS connection factory.
@@ -115,6 +124,8 @@ As with the database connection a JMS connection factory is not suited to partic
     <bean name="connectionFactory" class="nl.futureedge.simple.jta.jms.XAConnectionFactoryAdapter">
         <property name="uniqueName" value="message1" />
         <property name="xaConnectionFactory" ref="xaConnectionFactory" />
+        <property name="supportsJoin" value="false" />
+        <property name="supportsSuspend" value="false" />
     </bean>
 ```
 
@@ -125,6 +136,11 @@ As with the database connection a JMS connection factory is not suited to partic
 | xaConnectionFactory | The vendor provided XA ConnectionFactory to adapt | Yes |
 | jtaTransactionManager | The JtaTransactionManager this datasource is managed by (for recovery) | Yes (Autowired) |
 | supportsJoin | Set to true if this resource correctly supports joining partial transactions | No (default false) |
+| supportsSuspend | Set to true if this resource supports transaction suspension | No (default false) |
+
+##### Enlisting the resource
+The XA Resource is enlisted in the transaction when `Connection#createSession` is called to create a session with the argument `transacted` set to `true`.
+When a session is created with the argument `transacted` set to `false` an unmanaged session will be returned; when a session is created with the argument `transacted` set to `true` outside a transaction the connection will throw an exception. 
 
 ### Configuring using the Simple JTA namespace
 Using the simple-jta namespace this spring configuration can be compressed considerably:
@@ -138,7 +154,9 @@ Using the simple-jta namespace this spring configuration can be compressed consi
 
     <!-- TransactionManager -->
     <simple-jta:transaction-manager name="transactionManager" unique-name="test">
-        <simple-jta:jdbc-transaction-store create="true" url="jdbc:hsqldb:hsql://localhost:${test.database.port}/trans" user="sa" password="" />
+        <simple-jta:jdbc-transaction-store create="true" driver="org.hsqldb.jdbc.JDBCDriver"
+                                           url="jdbc:hsqldb:hsql://localhost:${test.database.port}/trans" user="sa" password=""
+                                           store-all-states="true" />
     </simple-jta:transaction-manager>
 
     <!-- DataSource -->
@@ -148,16 +166,27 @@ Using the simple-jta namespace this spring configuration can be compressed consi
         <property name="password" value=""/>
     </bean>
 
-    <simple-jta:data-source name="dataSource" unique-name="database1" xa-data-source="xaDataSource"/>
+    <simple-jta:data-source name="dataSource" unique-name="database1" xa-data-source="xaDataSource"
+                            supports-join="false" supports-suspend="false" allow-non-transacted-connections="warn"/>
 
     <!-- ConnectionFactory -->
     <bean name="xaConnectionFactory" class="org.apache.activemq.ActiveMQXAConnectionFactory">
         <property name="brokerURL" value="tcp://localhost:${test.broker.port}"/>
     </bean>
 
-    <simple-jta:connection-factory name="connectionFactory" unique-name="message1" xa-connection-factory="xaConnectionFactory"/>
+    <simple-jta:connection-factory name="connectionFactory" unique-name="message1" xa-connection-factory="xaConnectionFactory"
+                                   supports-join="false" supports-suspend="false" />
 </beans>
 ```
+
+### Transaction suspension
+A transaction can be suspended by calling `TransactionManager#suspend`; the transaction can be resumed by calling `TransactionManager#resume` with the transaction received from the `suspend` method.
+
+*note: resources cannot be reused between suspended transactions; Simple JTA only calls end(TMSUSPEND) and start (TMRESUME) to preserve resources on the server-side.*
+
+##### Enlisting resources
+When a transaction has been suspended and a new transaction 
+
 
 ### Distributed transactions and recovery
 How does the one and only responsibility of Simple JTA work?
@@ -184,7 +213,7 @@ The following states are always stored for transactions (globally or per branch,
 | Branch | PREPARED | This locks the changes to the resource |
 | Global | COMMITTING | **The decision to commit the transaction** |
 | Branch | COMMITTED | Signifies the changes in the resource have been succesfully committed |
-| Global(*)| COMMITTED | The transaction has completed succesfully by committing the changes |
+| Global (*)| COMMITTED | The transaction has completed succesfully by committing the changes |
 | Global (\*\*) | ROLLING_BACK | **The decision to rollback the transaction** |
 | Branch (\*\*) | ROLLED_BACK| Records the decision to rollback the transaction |
 | Global (*) | ROLLED_BACK| The transaction has completed succesfully by rolling back the changes |

@@ -3,9 +3,10 @@ package nl.futureedge.simple.jta;
 import static nl.futureedge.simple.jta.JtaExceptions.illegalStateException;
 import static nl.futureedge.simple.jta.JtaExceptions.notSupportedException;
 import static nl.futureedge.simple.jta.JtaExceptions.systemException;
-import static nl.futureedge.simple.jta.JtaExceptions.unsupportedOperationException;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.transaction.InvalidTransactionException;
 import javax.transaction.NotSupportedException;
 import javax.transaction.RollbackException;
@@ -33,12 +34,13 @@ import org.springframework.beans.factory.annotation.Required;
 public final class JtaTransactionManager implements InitializingBean, DisposableBean, TransactionManager, JtaSystemCallback {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JtaTransactionManager.class);
-    public static final String
-            COULD_NOT_WRITE_TRANSACTION_LOG_INCONSISTENT =
+    private static final String COULD_NOT_WRITE_TRANSACTION_LOG_INCONSISTENT =
             "Could not write transaction log; recovery could not be logged! TRANSACTION SYSTEM IS NOW INCONSISTENT!";
 
     private final ThreadLocal<Integer> timeoutInSeconds = new ThreadLocal<>();
-    private final ThreadLocal<JtaTransaction> transaction = new ThreadLocal<>();
+    private final ThreadLocal<JtaTransaction> currentTransaction = new ThreadLocal<>();
+
+    private Map<Long, JtaTransaction> allTransactions = new HashMap<>();
 
     private String uniqueName;
     private JtaTransactionStore transactionStore;
@@ -88,7 +90,12 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
      */
     @Override
     public void destroy() throws Exception {
-        // Nothing now; we could wait for all transactions to end, warning for each open transaction (bad developer) and maybe kill them (the transactions).
+        if (!allTransactions.isEmpty()) {
+            LOGGER.warn("Transaction manager shutting down, but not all transaction have been completed! "
+                    + "This probably indicates a programming error/shutdown problem!");
+
+            // Nothing now; we could wait for all transactions to end, warning for each open transaction (bad developer) and maybe kill them (the transactions).
+        }
     }
 
     /* ************************************** */
@@ -96,9 +103,11 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
     /* ************************************** */
 
     @Override
-    public void transactionCompleted(JtaTransaction completedTransaction) {
-        // The completed transaction is always the transaction of the thread
-        transaction.set(null);
+    public void transactionCompleted(final JtaTransaction completedTransaction) {
+        assert completedTransaction.equals(currentTransaction.get());
+
+        currentTransaction.remove();
+        allTransactions.remove(completedTransaction.getTransactionId());
     }
 
     /* ************************************** */
@@ -108,7 +117,7 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
     @Override
     public void begin() throws NotSupportedException, SystemException {
         LOGGER.trace("begin()");
-        if (transaction.get() != null) {
+        if (getTransaction() != null) {
             throw notSupportedException("Transaction already started");
         }
 
@@ -120,13 +129,15 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
         } catch (final JtaTransactionStoreException | IllegalStateException e) {
             throw systemException("Could not create new transaction", e);
         }
-        transaction.set(result);
+
+        currentTransaction.set(result);
+        allTransactions.put(result.getTransactionId(), result);
     }
 
     @Override
     public JtaTransaction getTransaction() {
         LOGGER.trace("getTransaction()");
-        return transaction.get();
+        return currentTransaction.get();
     }
 
     /**
@@ -135,7 +146,7 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
      * @throws IllegalStateException thrown when no transaction is active
      */
     public JtaTransaction getRequiredTransaction() {
-        final JtaTransaction result = transaction.get();
+        final JtaTransaction result = getTransaction();
         if (result == null) {
             throw illegalStateException("No transaction active");
         }
@@ -145,7 +156,7 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
     @Override
     public int getStatus() {
         LOGGER.trace("getStatus()");
-        final JtaTransaction result = transaction.get();
+        final JtaTransaction result = getTransaction();
         if (result == null) {
             return Status.STATUS_NO_TRANSACTION;
         } else {
@@ -176,22 +187,43 @@ public final class JtaTransactionManager implements InitializingBean, Disposable
         LOGGER.trace("setTransactionTimeout(seconds={})", seconds);
         timeoutInSeconds.set(seconds);
 
-        final JtaTransaction currentTransaction = transaction.get();
+        final JtaTransaction currentTransaction = getTransaction();
         if (currentTransaction != null) {
             currentTransaction.setTransactionTimeout(seconds);
         }
     }
 
-    @Override
-    public void resume(final Transaction transaction) throws InvalidTransactionException, SystemException {
-        LOGGER.trace("resume(transaction={})", transaction);
-        throw unsupportedOperationException("Transaction suspension is not supported");
-    }
+    /* ***************************** */
+    /* *** SUSPEND/RESUME*********** */
+    /* ***************************** */
 
     @Override
     public Transaction suspend() throws SystemException {
         LOGGER.trace("suspend()");
-        throw unsupportedOperationException("Transaction suspension is not supported");
+        final JtaTransaction result = getTransaction();
+        if (result == null) {
+            LOGGER.debug("No current transaction; returning null");
+            return null;
+        }
+
+        result.suspend();
+        currentTransaction.remove();
+        return result;
+    }
+
+    @Override
+    public void resume(final Transaction transactionToBeResumed) throws InvalidTransactionException, SystemException {
+        LOGGER.trace("resume(transactionToBeResumed={})", transactionToBeResumed);
+        if (getTransaction() != null) {
+            throw illegalStateException("Transaction cannot be resumed if a transaction is active");
+        }
+        if (!(transactionToBeResumed instanceof JtaTransaction)) {
+            throw JtaExceptions.invalidTransactionException("Given transaction is not a supported transaction");
+        }
+
+        final JtaTransaction jtaTransactionToBeResumed = (JtaTransaction) transactionToBeResumed;
+        currentTransaction.set(jtaTransactionToBeResumed);
+        jtaTransactionToBeResumed.resume();
     }
 
     /* ***************************** */

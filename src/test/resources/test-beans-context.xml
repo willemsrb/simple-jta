@@ -37,6 +37,9 @@
     <bean name="dataSource" class="nl.futureedge.simple.jta.jdbc.XADataSourceAdapter">
         <property name="uniqueName" value="database1"/>
         <property name="xaDataSource" ref="xaDataSource"/>
+        <property name="supportsJoin" value="false" />
+        <property name="supportsSuspend" value="false" />
+        <property name="allowNonTransactedConnections" value="warn" />
     </bean>
 
     <!-- Vendor provided XA ConnectionFactory -->
@@ -48,6 +51,8 @@
     <bean name="connectionFactory" class="nl.futureedge.simple.jta.jms.XAConnectionFactoryAdapter">
         <property name="uniqueName" value="message1"/>
         <property name="xaConnectionFactory" ref="xaConnectionFactory"/>
+        <property name="supportsJoin" value="false" />
+        <property name="supportsSuspend" value="false" />
     </bean>
 
     <!-- Spring provided templates to work with transactions, databases and messaging -->

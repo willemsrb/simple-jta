@@ -32,7 +32,7 @@ public class XAConnectionAdapterTest {
         transactionManager.afterPropertiesSet();
 
         xaConnection = Mockito.mock(XAConnection.class);
-        subject = new XAConnectionAdapter("testResourceManager", false, xaConnection, transactionManager);
+        subject = new XAConnectionAdapter("testResourceManager", false, false, xaConnection, transactionManager);
 
         Mockito.verifyNoMoreInteractions(xaConnection);
     }

@@ -30,6 +30,19 @@ public final class DataSourceParser extends AbstractBeanDefinitionParser {
         final BeanDefinitionBuilder builder = BeanDefinitionBuilder.rootBeanDefinition(XADataSourceAdapter.class);
         builder.addPropertyValue("uniqueName", element.getAttribute("unique-name"));
         builder.addPropertyReference("xaDataSource", element.getAttribute("xa-data-source"));
+        final String supportsJoin = element.getAttribute("supports-join");
+        if (supportsJoin != null && !"".equals(supportsJoin)) {
+            builder.addPropertyValue("supportsJoin", Boolean.parseBoolean(supportsJoin));
+        }
+        final String supportsSuspend = element.getAttribute("supports-suspend");
+        if (supportsSuspend != null && !"".equals(supportsSuspend)) {
+            builder.addPropertyValue("supportsSuspend", Boolean.parseBoolean(supportsSuspend));
+        }
+        final String allowNonTransactedConnections = element.getAttribute("allow-non-transacted-connections");
+        if (allowNonTransactedConnections != null && !"".equals(allowNonTransactedConnections)) {
+            builder.addPropertyValue("allowNonTransactedConnections", allowNonTransactedConnections);
+        }
+
         SpringConfigParser.handleDependsOn(builder, element);
 
         return builder.getBeanDefinition();

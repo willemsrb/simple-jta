@@ -32,6 +32,7 @@ final class XAConnectionAdapter implements Connection, JtaSystemCallback {
 
     private final String resourceManager;
     private final boolean supportsJoin;
+    private final boolean supportsSuspend;
     private final XAConnection xaConnection;
     private final JtaTransactionManager transactionManager;
 
@@ -43,9 +44,11 @@ final class XAConnectionAdapter implements Connection, JtaSystemCallback {
      * @param xaConnection xa connection
      * @param transactionManager transaction manager
      */
-    XAConnectionAdapter(String resourceManager, boolean supportsJoin, final XAConnection xaConnection, final JtaTransactionManager transactionManager) {
+    XAConnectionAdapter(String resourceManager, boolean supportsJoin, boolean supportsSuspend, final XAConnection xaConnection,
+                        final JtaTransactionManager transactionManager) {
         this.resourceManager = resourceManager;
         this.supportsJoin = supportsJoin;
+        this.supportsSuspend = supportsSuspend;
         this.xaConnection = xaConnection;
         this.transactionManager = transactionManager;
     }
@@ -78,7 +81,7 @@ final class XAConnectionAdapter implements Connection, JtaSystemCallback {
 
             final XASession xaSession = xaConnection.createXASession();
             try {
-                transaction.enlistResource(new XAResourceAdapter(resourceManager, supportsJoin, xaSession.getXAResource()));
+                transaction.enlistResource(new XAResourceAdapter(resourceManager, supportsJoin, supportsSuspend, xaSession.getXAResource()));
             } catch (IllegalStateException | RollbackException | SystemException e) {
                 final JMSException jmsException = new JMSException("Could not enlist connection to transaction");
                 jmsException.initCause(e);

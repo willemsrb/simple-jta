@@ -24,6 +24,7 @@ public final class XAConnectionFactoryAdapter implements ConnectionFactory, Init
     private XAConnectionFactory xaConnectionFactory;
     private JtaTransactionManager jtaTransactionManager;
     private boolean supportsJoin = false;
+    private boolean supportsSuspend = false;
 
     /**
      * Set unique name to use for this xa resource (manager).
@@ -64,10 +65,15 @@ public final class XAConnectionFactoryAdapter implements ConnectionFactory, Init
         this.supportsJoin = supportsJoin;
     }
 
+    public void setSupportsSuspend(boolean supportsSuspend) {
+        this.supportsSuspend = supportsSuspend;
+    }
+
     @Override
     public void afterPropertiesSet() throws Exception {
         // Execute recovery
-        jtaTransactionManager.recover(new XAResourceAdapter(uniqueName, false, xaConnectionFactory.createXAConnection().createXASession().getXAResource()));
+        jtaTransactionManager
+                .recover(new XAResourceAdapter(uniqueName, false, false, xaConnectionFactory.createXAConnection().createXASession().getXAResource()));
     }
 
     /* ******************************************************** */
@@ -78,13 +84,13 @@ public final class XAConnectionFactoryAdapter implements ConnectionFactory, Init
     public Connection createConnection() throws JMSException {
         LOGGER.trace("getConnection()");
         final XAConnection xaConnection = xaConnectionFactory.createXAConnection();
-        return new XAConnectionAdapter(uniqueName, supportsJoin, xaConnection, jtaTransactionManager);
+        return new XAConnectionAdapter(uniqueName, supportsJoin, supportsSuspend, xaConnection, jtaTransactionManager);
     }
 
     @Override
     public Connection createConnection(final String username, final String password) throws JMSException {
         LOGGER.trace("getConnection(username={}, password not logged)", username, password);
         final XAConnection xaConnection = xaConnectionFactory.createXAConnection(username, password);
-        return new XAConnectionAdapter(uniqueName, supportsJoin, xaConnection, jtaTransactionManager);
+        return new XAConnectionAdapter(uniqueName, supportsJoin, supportsSuspend, xaConnection, jtaTransactionManager);
     }
 }

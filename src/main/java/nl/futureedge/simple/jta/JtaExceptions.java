@@ -1,5 +1,6 @@
 package nl.futureedge.simple.jta;
 
+import javax.transaction.InvalidTransactionException;
 import javax.transaction.NotSupportedException;
 import javax.transaction.RollbackException;
 import javax.transaction.SystemException;
@@ -26,7 +27,6 @@ public final class JtaExceptions {
         LOGGER.debug(message);
         return new SystemException(message);
     }
-
 
     /**
      * Create a system exception.
@@ -79,5 +79,15 @@ public final class JtaExceptions {
     public static UnsupportedOperationException unsupportedOperationException(final String message) {
         LOGGER.debug(message);
         return new UnsupportedOperationException(message);
+    }
+
+    /**
+     * Create an invalid transaction exception.
+     * @param message message
+     * @return invalid transaction exception
+     */
+    public static InvalidTransactionException invalidTransactionException(String message) {
+        LOGGER.debug(message);
+        return new InvalidTransactionException(message);
     }
 }

@@ -19,7 +19,7 @@ public final class GenerateSqlFiles {
     }
 
     public static void main(final String[] args) {
-        if (args.length != 1) {
+        if (args == null || args.length != 1) {
             throw new IllegalArgumentException("One and only argument should contain a directory name");
         }
 

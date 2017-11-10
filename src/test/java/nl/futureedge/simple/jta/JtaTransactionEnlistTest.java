@@ -59,9 +59,9 @@ public class JtaTransactionEnlistTest {
 
     @Test
     public void testOk() throws Exception {
-        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, resourceOne));
-        transaction.enlistResource(new XAResourceAdapter("resourceTwo", true, resourceTwo));
-        transaction.enlistResource(new XAResourceAdapter("resourceThree", true, resourceThree));
+        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, false, resourceOne));
+        transaction.enlistResource(new XAResourceAdapter("resourceTwo", true, false, resourceTwo));
+        transaction.enlistResource(new XAResourceAdapter("resourceThree", true, false, resourceThree));
 
         InOrder ordered = Mockito.inOrder(transactionStore, resourceOne, resourceTwo, resourceThree);
         verifySetup(ordered);
@@ -91,9 +91,9 @@ public class JtaTransactionEnlistTest {
     @Test
     public void testWithTimeoutOk() throws Exception {
         transaction.setTransactionTimeout(30);
-        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, resourceOne));
-        transaction.enlistResource(new XAResourceAdapter("resourceTwo", true, resourceTwo));
-        transaction.enlistResource(new XAResourceAdapter("resourceThree", true, resourceThree));
+        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, false, resourceOne));
+        transaction.enlistResource(new XAResourceAdapter("resourceTwo", true, false, resourceTwo));
+        transaction.enlistResource(new XAResourceAdapter("resourceThree", true, false, resourceThree));
 
         InOrder ordered = Mockito.inOrder(transactionStore, resourceOne, resourceTwo, resourceThree);
         verifySetup(ordered);
@@ -128,7 +128,7 @@ public class JtaTransactionEnlistTest {
         Mockito.doThrow(new JtaTransactionStoreException("Fail")).when(transactionStore).active(Mockito.any(), Mockito.eq("resourceOne"));
 
         try {
-            transaction.enlistResource(new XAResourceAdapter("resourceOne", true, resourceOne));
+            transaction.enlistResource(new XAResourceAdapter("resourceOne", true, false, resourceOne));
             Assert.fail("SystemException expected");
         } catch (SystemException e) {
             // Expected
@@ -149,7 +149,7 @@ public class JtaTransactionEnlistTest {
 
         try {
             transaction.setTransactionTimeout(30);
-            transaction.enlistResource(new XAResourceAdapter("resourceOne", true, resourceOne));
+            transaction.enlistResource(new XAResourceAdapter("resourceOne", true, false, resourceOne));
             Assert.fail("SystemException expected");
         } catch (SystemException e) {
             // Expected
@@ -170,7 +170,7 @@ public class JtaTransactionEnlistTest {
         Mockito.doThrow(new XAException("Fail")).when(resourceOne).start(Mockito.any(), Mockito.eq(XAResource.TMNOFLAGS));
 
         try {
-            transaction.enlistResource(new XAResourceAdapter("resourceOne", true, resourceOne));
+            transaction.enlistResource(new XAResourceAdapter("resourceOne", true, false, resourceOne));
             Assert.fail("SystemException expected");
         } catch (SystemException e) {
             // Expected
@@ -192,9 +192,9 @@ public class JtaTransactionEnlistTest {
     public void testJoinOk() throws Exception {
         Mockito.doReturn(true).when(resourceOne).isSameRM(resourceTwo);
 
-        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, resourceOne));
-        transaction.enlistResource(new XAResourceAdapter("resourceTwo", true, resourceTwo));
-        transaction.enlistResource(new XAResourceAdapter("resourceThree", true, resourceThree));
+        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, false, resourceOne));
+        transaction.enlistResource(new XAResourceAdapter("resourceTwo", true, false, resourceTwo));
+        transaction.enlistResource(new XAResourceAdapter("resourceThree", true, false, resourceThree));
 
         InOrder ordered = Mockito.inOrder(transactionStore, resourceOne, resourceTwo, resourceThree);
         verifySetup(ordered);
@@ -224,9 +224,9 @@ public class JtaTransactionEnlistTest {
         Mockito.doReturn(true).when(resourceOne).isSameRM(resourceTwo);
 
         transaction.setTransactionTimeout(30);
-        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, resourceOne));
-        transaction.enlistResource(new XAResourceAdapter("resourceTwo", true, resourceTwo));
-        transaction.enlistResource(new XAResourceAdapter("resourceThree", true, resourceThree));
+        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, false, resourceOne));
+        transaction.enlistResource(new XAResourceAdapter("resourceTwo", true, false, resourceTwo));
+        transaction.enlistResource(new XAResourceAdapter("resourceThree", true, false, resourceThree));
 
         InOrder ordered = Mockito.inOrder(transactionStore, resourceOne, resourceTwo, resourceThree);
         verifySetup(ordered);
@@ -258,9 +258,9 @@ public class JtaTransactionEnlistTest {
         Mockito.doThrow(new XAException("Fail")).when(resourceTwo).setTransactionTimeout(30);
 
         transaction.setTransactionTimeout(30);
-        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, resourceOne));
+        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, false, resourceOne));
         try {
-            transaction.enlistResource(new XAResourceAdapter("resourceTwo", true, resourceTwo));
+            transaction.enlistResource(new XAResourceAdapter("resourceTwo", true, false, resourceTwo));
             Assert.fail("SystemException expected");
         } catch (SystemException e) {
             // Expected
@@ -288,9 +288,9 @@ public class JtaTransactionEnlistTest {
         Mockito.doReturn(true).when(resourceOne).isSameRM(resourceTwo);
         Mockito.doThrow(new XAException("Fail")).when(resourceTwo).start(Mockito.any(), Mockito.eq(XAResource.TMJOIN));
 
-        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, resourceOne));
+        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, false, resourceOne));
         try {
-            transaction.enlistResource(new XAResourceAdapter("resourceTwo", true, resourceTwo));
+            transaction.enlistResource(new XAResourceAdapter("resourceTwo", true, false, resourceTwo));
             Assert.fail("SystemException expected");
         } catch (SystemException e) {
             // Expected

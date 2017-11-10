@@ -19,10 +19,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 import javax.sql.XAConnection;
-import javax.transaction.Status;
 import nl.futureedge.simple.jta.JtaSystemCallback;
 import nl.futureedge.simple.jta.JtaTransaction;
-import nl.futureedge.simple.jta.JtaTransactionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,20 +36,17 @@ final class XAConnectionAdapter implements Connection, JtaSystemCallback {
 
     private final XAConnection xaConnection;
     private final Connection connection;
-    private final JtaTransactionManager transactionManager;
 
-    private boolean closeAfterCompletion = false;
+    private boolean connectionClosed = false;
 
     /**
      * Constructor.
      * @param xaConnection xa connection
-     * @param transactionManager jta transaction manager
      * @throws SQLException when the underlying connection of the xa connection could not be retrieved
      */
-    XAConnectionAdapter(final XAConnection xaConnection, final JtaTransactionManager transactionManager) throws SQLException {
+    XAConnectionAdapter(final XAConnection xaConnection) throws SQLException {
         this.xaConnection = xaConnection;
         connection = xaConnection.getConnection();
-        this.transactionManager = transactionManager;
     }
 
     /* ******************************************************** */
@@ -60,34 +55,32 @@ final class XAConnectionAdapter implements Connection, JtaSystemCallback {
 
     @Override
     public void transactionCompleted(final JtaTransaction transaction) {
-        if (closeAfterCompletion) {
-            try {
-                LOGGER.debug("Closing connection after completion of transaction");
-                xaConnection.close();
-            } catch (final SQLException e) {
-                LOGGER.warn("Could not close connection after completion of transaction", e);
-            }
+        if (!connectionClosed) {
+            LOGGER.warn("Transaction completed, but connection not closed! This probably indicates a programming error/connection leak!");
+            connectionClosed = true;
+        }
+
+        try {
+            LOGGER.debug("Closing connection after completion of transaction");
+            xaConnection.close();
+        } catch (final SQLException e) {
+            LOGGER.warn("Could not close connection after completion of transaction", e);
         }
     }
-
-    /* ******************************************************** */
-    /* ******************************************************** */
-    /* ******************************************************** */
 
     @Override
     public void close() throws SQLException {
-        if (Status.STATUS_NO_TRANSACTION == transactionManager.getStatus()) {
-            xaConnection.close();
-        } else {
-            LOGGER.debug("Registering connection as closed; keeping until completion of transaction");
-            closeAfterCompletion = true;
-        }
+        connectionClosed = true;
     }
+
+    /* ******************************************************** */
+    /* ******************************************************** */
+    /* ******************************************************** */
 
     @Override
     public boolean isClosed() throws SQLException {
         LOGGER.trace("isClosed()");
-        boolean result = closeAfterCompletion || connection.isClosed();
+        boolean result = connectionClosed || connection.isClosed();
         LOGGER.trace("isClosed() -> {}", result);
         return result;
     }
@@ -104,7 +97,7 @@ final class XAConnectionAdapter implements Connection, JtaSystemCallback {
                 throw new SQLClientInfoException("Connection is closed", null);
             }
         } catch (SQLException e) {
-            throw new SQLClientInfoException("Could not determine connection status", null, e);
+            throw new SQLClientInfoException("Could not determine connection status", null);
         }
     }
 
@@ -118,8 +111,8 @@ final class XAConnectionAdapter implements Connection, JtaSystemCallback {
             return false;
         }
 
-        if (closeAfterCompletion) {
-            closeAfterCompletion = false;
+        if (connectionClosed) {
+            connectionClosed = false;
             return true;
         }
 

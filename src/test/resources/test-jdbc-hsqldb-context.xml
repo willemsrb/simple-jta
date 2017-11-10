@@ -16,7 +16,9 @@
 
     <!-- TransactionManager -->
     <simple-jta:transaction-manager name="transactionManager" unique-name="test" depends-on="beanOne,beanTwo">
-        <simple-jta:jdbc-transaction-store create="true" url="jdbc:hsqldb:hsql://localhost:${test.database.port}/trans" user="sa" password="" store-all-states="true" depends-on="beanThree" />
+        <simple-jta:jdbc-transaction-store create="true" driver="org.hsqldb.jdbc.JDBCDriver"
+                                           url="jdbc:hsqldb:hsql://localhost:${test.database.port}/trans" user="sa" password=""
+                                           store-all-states="true" depends-on="beanThree" />
     </simple-jta:transaction-manager>
 
     <import resource="classpath:test-base-context.xml" />

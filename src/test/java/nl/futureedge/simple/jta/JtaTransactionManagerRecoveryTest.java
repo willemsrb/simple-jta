@@ -33,7 +33,7 @@ public class JtaTransactionManagerRecoveryTest {
         subject.setJtaTransactionStore(transactionStore);
 
         xaResource = Mockito.mock(XAResource.class);
-        xaResourceAdapter = new XAResourceAdapter(RESOURCE_MANAGER, false, xaResource);
+        xaResourceAdapter = new XAResourceAdapter(RESOURCE_MANAGER, false, false, xaResource);
     }
 
     @Test
@@ -158,37 +158,6 @@ public class JtaTransactionManagerRecoveryTest {
     }
 
     @Test
-    public void recoverRollbackFailed() throws Exception {
-        GlobalJtaXid globalXid1 = new GlobalJtaXid(TRANSACTION_MANAGER, 1);
-        BranchJtaXid xid1 = globalXid1.createBranchXid();
-        GlobalJtaXid globalXid2 = new GlobalJtaXid(TRANSACTION_MANAGER, 2);
-        BranchJtaXid xid2 = globalXid2.createBranchXid();
-
-        XAException cause = new XAException("Test");
-        Mockito.doThrow(cause).when(xaResource).rollback(xid1);
-
-        Mockito.when(transactionStore.isCommitting(xid1)).thenReturn(false);
-        Mockito.when(transactionStore.isCommitting(xid2)).thenReturn(false);
-
-        Mockito.when(xaResource.recover(XAResource.TMENDRSCAN)).thenReturn(new Xid[]{xid1, xid2});
-
-        subject.recover(xaResourceAdapter);
-
-        Mockito.verify(xaResource).recover(XAResource.TMENDRSCAN);
-        Mockito.verify(transactionStore).isCommitting(xid1);
-        Mockito.verify(transactionStore).rollingBack(xid1, RESOURCE_MANAGER);
-        Mockito.verify(xaResource).rollback(xid1);
-        Mockito.verify(transactionStore).rollbackFailed(xid1, RESOURCE_MANAGER, cause);
-        Mockito.verify(transactionStore).isCommitting(xid2);
-        Mockito.verify(transactionStore).rollingBack(xid2, RESOURCE_MANAGER);
-        Mockito.verify(xaResource).rollback(xid2);
-        Mockito.verify(transactionStore).rolledBack(xid2, RESOURCE_MANAGER);
-
-        Mockito.verify(transactionStore).cleanup();
-        Mockito.verifyNoMoreInteractions(xaResource, transactionStore);
-    }
-
-    @Test
     public void recoverStoreCommittingFailed() throws Exception {
         GlobalJtaXid globalXid1 = new GlobalJtaXid(TRANSACTION_MANAGER, 1);
         BranchJtaXid xid1 = globalXid1.createBranchXid();
@@ -274,5 +243,118 @@ public class JtaTransactionManagerRecoveryTest {
         Mockito.verifyNoMoreInteractions(xaResource, transactionStore);
     }
 
+    @Test
+    public void recoverRollbackFailed() throws Exception {
+        GlobalJtaXid globalXid1 = new GlobalJtaXid(TRANSACTION_MANAGER, 1);
+        BranchJtaXid xid1 = globalXid1.createBranchXid();
+        GlobalJtaXid globalXid2 = new GlobalJtaXid(TRANSACTION_MANAGER, 2);
+        BranchJtaXid xid2 = globalXid2.createBranchXid();
+
+        XAException cause = new XAException("Test");
+        Mockito.doThrow(cause).when(xaResource).rollback(xid1);
+
+        Mockito.when(transactionStore.isCommitting(xid1)).thenReturn(false);
+        Mockito.when(transactionStore.isCommitting(xid2)).thenReturn(false);
+
+        Mockito.when(xaResource.recover(XAResource.TMENDRSCAN)).thenReturn(new Xid[]{xid1, xid2});
+
+        subject.recover(xaResourceAdapter);
+
+        Mockito.verify(xaResource).recover(XAResource.TMENDRSCAN);
+        Mockito.verify(transactionStore).isCommitting(xid1);
+        Mockito.verify(transactionStore).rollingBack(xid1, RESOURCE_MANAGER);
+        Mockito.verify(xaResource).rollback(xid1);
+        Mockito.verify(transactionStore).rollbackFailed(xid1, RESOURCE_MANAGER, cause);
+        Mockito.verify(transactionStore).isCommitting(xid2);
+        Mockito.verify(transactionStore).rollingBack(xid2, RESOURCE_MANAGER);
+        Mockito.verify(xaResource).rollback(xid2);
+        Mockito.verify(transactionStore).rolledBack(xid2, RESOURCE_MANAGER);
+
+        Mockito.verify(transactionStore).cleanup();
+        Mockito.verifyNoMoreInteractions(xaResource, transactionStore);
+    }
+
+    @Test
+    public void recoverStoreRollingBackFailed() throws Exception {
+        GlobalJtaXid globalXid1 = new GlobalJtaXid(TRANSACTION_MANAGER, 1);
+        BranchJtaXid xid1 = globalXid1.createBranchXid();
+        GlobalJtaXid globalXid2 = new GlobalJtaXid(TRANSACTION_MANAGER, 2);
+        BranchJtaXid xid2 = globalXid2.createBranchXid();
+
+        Mockito.when(xaResource.recover(XAResource.TMENDRSCAN)).thenReturn(new Xid[]{xid1, xid2});
+
+        JtaTransactionStoreException cause = new JtaTransactionStoreException("Test");
+        Mockito.doThrow(cause).when(transactionStore).rollingBack(xid1, RESOURCE_MANAGER);
+
+        try {
+            subject.recover(xaResourceAdapter);
+            Assert.fail("SystemException expected");
+        } catch (SystemException e) {
+            // Expected
+        }
+
+        Mockito.verify(xaResource).recover(XAResource.TMENDRSCAN);
+        Mockito.verify(transactionStore).isCommitting(xid1);
+        Mockito.verify(transactionStore).rollingBack(xid1, RESOURCE_MANAGER);
+
+        Mockito.verifyNoMoreInteractions(xaResource, transactionStore);
+    }
+
+    @Test
+    public void recoverStoreRolledbackFailed() throws Exception {
+        GlobalJtaXid globalXid1 = new GlobalJtaXid(TRANSACTION_MANAGER, 1);
+        BranchJtaXid xid1 = globalXid1.createBranchXid();
+        GlobalJtaXid globalXid2 = new GlobalJtaXid(TRANSACTION_MANAGER, 2);
+        BranchJtaXid xid2 = globalXid2.createBranchXid();
+
+        Mockito.when(xaResource.recover(XAResource.TMENDRSCAN)).thenReturn(new Xid[]{xid1, xid2});
+
+        JtaTransactionStoreException cause = new JtaTransactionStoreException("Test");
+        Mockito.doThrow(cause).when(transactionStore).rolledBack(xid1, RESOURCE_MANAGER);
+
+        try {
+            subject.recover(xaResourceAdapter);
+            Assert.fail("SystemException expected");
+        } catch (SystemException e) {
+            // Expected
+        }
+
+        Mockito.verify(xaResource).recover(XAResource.TMENDRSCAN);
+        Mockito.verify(transactionStore).isCommitting(xid1);
+        Mockito.verify(transactionStore).rollingBack(xid1, RESOURCE_MANAGER);
+        Mockito.verify(xaResource).rollback(xid1);
+        Mockito.verify(transactionStore).rolledBack(xid1, RESOURCE_MANAGER);
+
+        Mockito.verifyNoMoreInteractions(xaResource, transactionStore);
+    }
+
+    @Test
+    public void recoverStoreRollbackFailedFailed() throws Exception {
+        GlobalJtaXid globalXid1 = new GlobalJtaXid(TRANSACTION_MANAGER, 1);
+        BranchJtaXid xid1 = globalXid1.createBranchXid();
+        GlobalJtaXid globalXid2 = new GlobalJtaXid(TRANSACTION_MANAGER, 2);
+        BranchJtaXid xid2 = globalXid2.createBranchXid();
+
+        Mockito.when(xaResource.recover(XAResource.TMENDRSCAN)).thenReturn(new Xid[]{xid1, xid2});
+
+        XAException commitCause = new XAException("Test");
+        Mockito.doThrow(commitCause).when(xaResource).rollback(xid1);
+        Mockito.doThrow(new JtaTransactionStoreException("Test")).when(transactionStore).rollbackFailed(xid1, RESOURCE_MANAGER, commitCause);
+
+        try {
+            subject.recover(xaResourceAdapter);
+            Assert.fail("SystemException expected");
+        } catch (SystemException e) {
+            // Expected
+        }
+
+        Mockito.verify(xaResource).recover(XAResource.TMENDRSCAN);
+        Mockito.verify(transactionStore).isCommitting(xid1);
+        Mockito.verify(transactionStore).rollingBack(xid1, RESOURCE_MANAGER);
+        Mockito.verify(xaResource).rollback(xid1);
+        Mockito.verify(transactionStore).rollbackFailed(xid1, RESOURCE_MANAGER, commitCause);
+
+        Mockito.verifyNoMoreInteractions(xaResource, transactionStore);
+    }
 
 }

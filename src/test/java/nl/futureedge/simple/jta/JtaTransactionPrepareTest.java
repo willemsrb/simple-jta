@@ -49,9 +49,9 @@ public class JtaTransactionPrepareTest {
         resourceTwo = Mockito.mock(XAResource.class);
         resourceThree = Mockito.mock(XAResource.class);
 
-        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, resourceOne));
-        transaction.enlistResource(new XAResourceAdapter("resourceTwo", true, resourceTwo));
-        transaction.enlistResource(new XAResourceAdapter("resourceThree", true, resourceThree));
+        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, false, resourceOne));
+        transaction.enlistResource(new XAResourceAdapter("resourceTwo", true, false, resourceTwo));
+        transaction.enlistResource(new XAResourceAdapter("resourceThree", true, false, resourceThree));
     }
 
     private void verifySetup(InOrder ordered) throws JtaTransactionStoreException, XAException {

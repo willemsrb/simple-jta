@@ -17,13 +17,14 @@ public class XAResourceAdapterTest {
     public void setup() {
         xaResource = Mockito.mock(XAResource.class);
 
-        subject = new XAResourceAdapter("resourceManager", true, xaResource);
+        subject = new XAResourceAdapter("resourceManager", true, false, xaResource);
     }
 
     @Test
     public void getters() {
         Assert.assertEquals("resourceManager", subject.getResourceManager());
         Assert.assertEquals(true, subject.supportsJoin());
+        Assert.assertEquals(false, subject.supportsSuspend());
         Assert.assertNotNull(subject.toString());
     }
 

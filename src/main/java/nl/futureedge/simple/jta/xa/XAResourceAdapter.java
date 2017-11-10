@@ -15,12 +15,14 @@ public final class XAResourceAdapter implements XAResource {
 
     private final String resourceManager;
     private final boolean supportsJoin;
+    private final boolean supportsSuspend;
 
     private final XAResource xaResource;
 
-    public XAResourceAdapter(final String resourceManager, final boolean supportsJoin, final XAResource xaResource) {
+    public XAResourceAdapter(final String resourceManager, final boolean supportsJoin, final boolean supportsSuspend, final XAResource xaResource) {
         this.resourceManager = resourceManager;
         this.supportsJoin = supportsJoin;
+        this.supportsSuspend = supportsSuspend;
         this.xaResource = xaResource;
     }
 
@@ -30,6 +32,10 @@ public final class XAResourceAdapter implements XAResource {
 
     public boolean supportsJoin() {
         return supportsJoin;
+    }
+
+    public boolean supportsSuspend() {
+        return supportsSuspend;
     }
 
     @Override

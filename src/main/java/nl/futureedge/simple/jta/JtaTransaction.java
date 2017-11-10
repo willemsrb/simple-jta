@@ -9,8 +9,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import javax.transaction.InvalidTransactionException;
 import javax.transaction.RollbackException;
-import javax.transaction.Status;
 import javax.transaction.Synchronization;
 import javax.transaction.SystemException;
 import javax.transaction.Transaction;
@@ -30,7 +31,6 @@ import org.slf4j.LoggerFactory;
 public final class JtaTransaction implements Transaction {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JtaTransaction.class);
-
     private static final String COULD_NOT_WRITE_TRANSACTION_LOG = "Could not write transaction log";
 
     private final GlobalJtaXid globalXid;
@@ -38,7 +38,7 @@ public final class JtaTransaction implements Transaction {
 
     private Integer timeoutInSeconds;
 
-    private int status = Status.STATUS_ACTIVE;
+    private JtaTransactionStatus status = JtaTransactionStatus.ACTIVE;
 
     private final List<EnlistedXaResource> enlistedXaResources = new ArrayList<>();
     private final List<JtaSystemCallback> systemCallbacks = new ArrayList<>();
@@ -100,20 +100,20 @@ public final class JtaTransaction implements Transaction {
     @Override
     public int getStatus() {
         LOGGER.trace("getStatus()");
-        return status;
+        return status.getJtaStatus();
     }
 
     @Override
     public synchronized void setRollbackOnly() {
         LOGGER.trace("setRollbackOnly()");
-        status = Status.STATUS_MARKED_ROLLBACK;
+        status = JtaTransactionStatus.MARKED_ROLLBACK;
     }
 
     private void checkActive(final String operation) throws RollbackException {
-        if (Status.STATUS_MARKED_ROLLBACK == status) {
+        if (JtaTransactionStatus.MARKED_ROLLBACK == status) {
             throw rollbackException("Transaction is marked for rollback only; " + operation + " not allowed");
         }
-        if (Status.STATUS_ACTIVE != status) {
+        if (JtaTransactionStatus.ACTIVE != status) {
             throw illegalStateException("Transaction status is not active (but " + status + "); " + operation + " not allowed.");
         }
     }
@@ -127,6 +127,7 @@ public final class JtaTransaction implements Transaction {
             return false;
         }
     }
+
 
     @FunctionalInterface
     private interface TransactionStoreCommand {
@@ -167,6 +168,10 @@ public final class JtaTransaction implements Transaction {
             }
         }
 
+        doEnlistResource(xaResource);
+    }
+
+    private void doEnlistResource(final XAResourceAdapter xaResource) throws SystemException {
         // Store
         final BranchJtaXid branchXid = globalXid.createBranchXid();
         enlistedXaResources.add(new EnlistedXaResource(xaResource, branchXid));
@@ -181,7 +186,7 @@ public final class JtaTransaction implements Transaction {
             if (timeoutInSeconds != null) {
                 xaResource.setTransactionTimeout(timeoutInSeconds);
             }
-            LOGGER.debug("Calling xa_start on {} using xid {}", xaResource, branchXid);
+            LOGGER.debug("Calling xa_start(xid, TMNOFLAGS) on {} using xid {}", xaResource, branchXid);
             xaResource.start(branchXid, XAResource.TMNOFLAGS);
         } catch (final XAException e) {
             throw systemException("Could not start transaction on XA resource", e);
@@ -197,7 +202,7 @@ public final class JtaTransaction implements Transaction {
                     }
                     // Join the 'other' xaResource
                     // Preparing and committing will be done through the 'other' xaResource, so we don't need to keep a reference to 'this' xaResource.
-                    LOGGER.debug("Calling xa_start (join) on {} using xid {}", xaResource, enlistedResource.getBranchXid());
+                    LOGGER.debug("Calling xa_start(xid, TMJOIN) on {} using xid {}", xaResource, enlistedResource.getBranchXid());
                     xaResource.start(enlistedResource.getBranchXid(), XAResource.TMJOIN);
                     return true;
                 }
@@ -206,6 +211,49 @@ public final class JtaTransaction implements Transaction {
             }
         }
         return false;
+    }
+
+    /* ***************************** */
+    /* *** SUSPEND/RESUME ********** */
+    /* ***************************** */
+
+    boolean isSuspended() {
+        return status == JtaTransactionStatus.SUSPENDED;
+    }
+
+    synchronized void suspend() throws SystemException {
+        for (final EnlistedXaResource enlistedResource : enlistedXaResources) {
+            if (enlistedResource.getXaResource().supportsSuspend()) {
+                try {
+                    enlistedResource.getXaResource().end(enlistedResource.getBranchXid(), XAResource.TMSUSPEND);
+                } catch (final XAException e) {
+                    status = JtaTransactionStatus.MARKED_ROLLBACK;
+                    throw systemException("Transaction could not be suspended; xa errorcode=" + e.errorCode, e);
+                }
+            }
+        }
+        status = JtaTransactionStatus.SUSPENDED;
+    }
+
+    synchronized void resume() throws SystemException, InvalidTransactionException {
+        if (!isSuspended()) {
+            throw JtaExceptions.invalidTransactionException("Given transaction is not a suspended transaction");
+        }
+
+        for (final EnlistedXaResource enlistedResource : enlistedXaResources) {
+            if (enlistedResource.getXaResource().supportsSuspend()) {
+                try {
+                    XAResourceAdapter xaResource = enlistedResource.getXaResource();
+                    BranchJtaXid branchXid = enlistedResource.getBranchXid();
+                    LOGGER.debug("Calling xa_start(xid, TMRESUME) on {} using xid {}", xaResource, branchXid);
+                    xaResource.start(branchXid, XAResource.TMRESUME);
+                } catch (final XAException e) {
+                    status = JtaTransactionStatus.MARKED_ROLLBACK;
+                    throw systemException("Transaction could not be resumed.");
+                }
+            }
+        }
+        status = JtaTransactionStatus.ACTIVE;
     }
 
     /* ***************************** */
@@ -220,24 +268,24 @@ public final class JtaTransaction implements Transaction {
         // Before completion
         doBeforeCompletion();
 
-        if (status == Status.STATUS_ACTIVE) {
+        if (status == JtaTransactionStatus.ACTIVE) {
             // Preparing
             LOGGER.debug("Starting prepare of 2-phase commit");
             doPreparing();
         }
 
-        if (status == Status.STATUS_PREPARING) {
+        if (status == JtaTransactionStatus.PREPARING) {
             // Prepare
             doPrepare();
         }
 
-        if (status == Status.STATUS_PREPARED) {
+        if (status == JtaTransactionStatus.PREPARED) {
             LOGGER.debug("Starting commit of 2-phase commit");
             // Committing
             doCommitting();
         }
 
-        if (status == Status.STATUS_COMMITTING) {
+        if (status == JtaTransactionStatus.COMMITTING) {
             // Commit
             doCommit();
         } else {
@@ -256,15 +304,15 @@ public final class JtaTransaction implements Transaction {
             }
         } catch (final Exception e) {
             LOGGER.info("Exception during synchronization.beforeCompletion", e);
-            status = Status.STATUS_MARKED_ROLLBACK;
+            status = JtaTransactionStatus.MARKED_ROLLBACK;
         }
     }
 
     private void doPreparing() {
         if (store(true, () -> transactionStore.preparing(globalXid))) {
-            status = Status.STATUS_PREPARING;
+            status = JtaTransactionStatus.PREPARING;
         } else {
-            status = Status.STATUS_MARKED_ROLLBACK;
+            status = JtaTransactionStatus.MARKED_ROLLBACK;
         }
     }
 
@@ -310,6 +358,8 @@ public final class JtaTransaction implements Transaction {
                 if (XAException.XA_RBBASE <= e.errorCode && XAException.XA_RBEND >= e.errorCode) {
                     LOGGER.debug("XA exception during prepare; xa resource is rolled back", e);
                     enlistedXaResource.setClosed();
+                } else {
+                    LOGGER.debug("XA exception during prepare", e);
                 }
             }
         }
@@ -320,17 +370,17 @@ public final class JtaTransaction implements Transaction {
         LOGGER.debug("Prepare of 2-phase commit completed; result = {}", ok);
 
         if (ok) {
-            status = Status.STATUS_PREPARED;
+            status = JtaTransactionStatus.PREPARED;
         } else {
-            status = Status.STATUS_MARKED_ROLLBACK;
+            status = JtaTransactionStatus.MARKED_ROLLBACK;
         }
     }
 
     private void doCommitting() {
         if (store(true, () -> transactionStore.committing(globalXid))) {
-            status = Status.STATUS_COMMITTING;
+            status = JtaTransactionStatus.COMMITTING;
         } else {
-            status = Status.STATUS_MARKED_ROLLBACK;
+            status = JtaTransactionStatus.MARKED_ROLLBACK;
         }
     }
 
@@ -353,6 +403,7 @@ public final class JtaTransaction implements Transaction {
                 xaResource.commit(branchXid, false);
                 storeOk = store(storeOk, () -> transactionStore.committed(branchXid, xaResource.getResourceManager()));
             } catch (final XAException e) {
+                status = JtaTransactionStatus.COMMIT_FAILED;
                 commitOk = false;
                 LOGGER.error("XA exception during commit", e);
                 storeOk = store(storeOk, () -> transactionStore.commitFailed(branchXid, xaResource.getResourceManager(), e));
@@ -362,10 +413,11 @@ public final class JtaTransaction implements Transaction {
         LOGGER.debug("Commit of 2-phase commit completed; success = {}", commitOk);
         if (commitOk) {
             storeOk = store(storeOk, () -> transactionStore.committed(globalXid));
+            status = JtaTransactionStatus.COMMITTED;
         } else {
             storeOk = store(storeOk, () -> transactionStore.commitFailed(globalXid));
+            status = JtaTransactionStatus.COMMIT_FAILED;
         }
-        status = Status.STATUS_COMMITTED;
         doSystemCallbacks();
 
         if (!commitOk) {
@@ -382,7 +434,7 @@ public final class JtaTransaction implements Transaction {
     @Override
     public synchronized void rollback() throws SystemException {
         LOGGER.trace("rollback()");
-        if (Status.STATUS_ACTIVE != status && Status.STATUS_MARKED_ROLLBACK != status) {
+        if (JtaTransactionStatus.ACTIVE != status && JtaTransactionStatus.MARKED_ROLLBACK != status) {
             throw illegalStateException("Transaction status is not active or marked for rollback (but " + status + "); rollback not allowed.");
         }
 
@@ -395,7 +447,7 @@ public final class JtaTransaction implements Transaction {
 
         // Rollback
         LOGGER.debug("Starting rollback");
-        status = Status.STATUS_ROLLING_BACK;
+        status = JtaTransactionStatus.ROLLING_BACK;
         boolean storeOk = store(true, () -> transactionStore.rollingBack(globalXid));
         boolean rollbackOk = true;
 
@@ -435,10 +487,11 @@ public final class JtaTransaction implements Transaction {
         LOGGER.debug("Rollback completed; success = {}", rollbackOk);
         if (rollbackOk) {
             storeOk = store(storeOk, () -> transactionStore.rolledBack(globalXid));
+            status = JtaTransactionStatus.ROLLED_BACK;
         } else {
             storeOk = store(storeOk, () -> transactionStore.rollbackFailed(globalXid));
+            status = JtaTransactionStatus.ROLLBACK_FAILED;
         }
-        status = Status.STATUS_ROLLEDBACK;
         doSystemCallbacks();
 
         if (!rollbackOk) {
@@ -487,7 +540,7 @@ public final class JtaTransaction implements Transaction {
     private void doAfterCompletion() {
         LOGGER.trace("doAfterCompletion()");
         for (final Synchronization synchronization : synchronizations) {
-            synchronization.afterCompletion(status);
+            synchronization.afterCompletion(status.getJtaStatus());
         }
     }
 
@@ -520,6 +573,23 @@ public final class JtaTransaction implements Transaction {
                 throw systemException("Could not set timeout on XA resource", e);
             }
         }
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        JtaTransaction that = (JtaTransaction) o;
+        return Objects.equals(globalXid, that.globalXid);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(globalXid);
     }
 
     @Override

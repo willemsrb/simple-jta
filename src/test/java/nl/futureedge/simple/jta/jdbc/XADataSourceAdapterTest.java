@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import javax.sql.XAConnection;
 import javax.sql.XADataSource;
+import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
 import nl.futureedge.simple.jta.JtaTransactionManager;
@@ -37,7 +38,9 @@ public class XADataSourceAdapterTest {
         subject.setXaDataSource(xaDataSource);
         subject.setJtaTransactionManager(transactionManager);
         subject.setSupportsJoin(true);
+        subject.setSupportsSuspend(true);
     }
+
 
     @Test
     public void afterPropertiesSet() throws Exception {
@@ -109,7 +112,9 @@ public class XADataSourceAdapterTest {
     }
 
     @Test
-    public void getConnectionOutsideTransaction() throws Exception {
+    public void getConnectionOutsideTransactionYes() throws Exception {
+        subject.setAllowNonTransactedConnections("yes");
+
         Connection connection = Mockito.mock(Connection.class);
         XAConnection xaConnection = Mockito.mock(XAConnection.class);
         Mockito.when(xaConnection.getConnection()).thenReturn(connection);
@@ -120,6 +125,36 @@ public class XADataSourceAdapterTest {
         Mockito.verify(xaDataSource).getXAConnection();
         Mockito.verify(xaConnection).getConnection();
         Mockito.verifyNoMoreInteractions(xaDataSource, xaConnection, connection);
+    }
+
+    @Test
+    public void getConnectionOutsideTransactionWarn() throws Exception {
+        subject.setAllowNonTransactedConnections("warn");
+
+        Connection connection = Mockito.mock(Connection.class);
+        XAConnection xaConnection = Mockito.mock(XAConnection.class);
+        Mockito.when(xaConnection.getConnection()).thenReturn(connection);
+        Mockito.when(xaDataSource.getXAConnection()).thenReturn(xaConnection);
+
+        Assert.assertSame(connection, subject.getConnection());
+
+        Mockito.verify(xaDataSource).getXAConnection();
+        Mockito.verify(xaConnection).getConnection();
+        Mockito.verifyNoMoreInteractions(xaDataSource, xaConnection, connection);
+    }
+
+    @Test
+    public void getConnectionOutsideTransactionNotAllowed() throws Exception {
+        subject.setAllowNonTransactedConnections("no");
+
+        try {
+            subject.getConnection();
+            Assert.fail("SQLException expected");
+        } catch (SQLException e) {
+            // Expected
+        }
+
+        Mockito.verifyNoMoreInteractions(xaDataSource);
     }
 
     @Test
@@ -140,6 +175,53 @@ public class XADataSourceAdapterTest {
         Mockito.verify(xaConnection).getXAResource();
         Mockito.verify(xaResource).start(Mockito.any(), Mockito.eq(XAResource.TMNOFLAGS));
         Mockito.verify(xaConnection).getConnection();
+        Mockito.verifyNoMoreInteractions(xaDataSource, xaConnection, xaResource, connection);
+    }
+
+
+    @Test
+    public void getConnectionInTransactionWithCredentials() throws Exception {
+        transactionManager.begin();
+
+        Connection connection = Mockito.mock(Connection.class);
+        XAResource xaResource = Mockito.mock(XAResource.class);
+        XAConnection xaConnection = Mockito.mock(XAConnection.class);
+        Mockito.when(xaConnection.getConnection()).thenReturn(connection);
+        Mockito.when(xaConnection.getXAResource()).thenReturn(xaResource);
+        Mockito.when(xaDataSource.getXAConnection("user", "pass")).thenReturn(xaConnection);
+
+        Connection result = subject.getConnection("user", "pass");
+        Assert.assertTrue(result instanceof XAConnectionAdapter);
+
+        Mockito.verify(xaDataSource).getXAConnection("user", "pass");
+        Mockito.verify(xaConnection).getXAResource();
+        Mockito.verify(xaResource).start(Mockito.any(), Mockito.eq(XAResource.TMNOFLAGS));
+        Mockito.verify(xaConnection).getConnection();
+        Mockito.verifyNoMoreInteractions(xaDataSource, xaConnection, xaResource, connection);
+    }
+
+    @Test
+    public void getConnectionInTransactionEnlistFailed() throws Exception {
+        transactionManager.begin();
+
+        Connection connection = Mockito.mock(Connection.class);
+        XAResource xaResource = Mockito.mock(XAResource.class);
+        XAConnection xaConnection = Mockito.mock(XAConnection.class);
+        Mockito.when(xaConnection.getConnection()).thenReturn(connection);
+        Mockito.when(xaConnection.getXAResource()).thenReturn(xaResource);
+        Mockito.when(xaDataSource.getXAConnection()).thenReturn(xaConnection);
+        Mockito.doThrow(new XAException("Test")).when(xaResource).start(Mockito.any(), Mockito.eq(XAResource.TMNOFLAGS));
+
+        try {
+            subject.getConnection();
+            Assert.fail("SQLException expected");
+        } catch (SQLException e) {
+            // Expected
+        }
+
+        Mockito.verify(xaDataSource).getXAConnection();
+        Mockito.verify(xaConnection).getXAResource();
+        Mockito.verify(xaResource).start(Mockito.any(), Mockito.eq(XAResource.TMNOFLAGS));
         Mockito.verifyNoMoreInteractions(xaDataSource, xaConnection, xaResource, connection);
     }
 

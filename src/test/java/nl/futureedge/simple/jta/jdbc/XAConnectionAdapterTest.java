@@ -56,7 +56,7 @@ public class XAConnectionAdapterTest {
 
         Mockito.when(xaConnection.getConnection()).thenReturn(connection);
 
-        subject = new XAConnectionAdapter(xaConnection, transactionManager);
+        subject = new XAConnectionAdapter(xaConnection);
 
         Mockito.verify(xaConnection).getConnection();
         Mockito.verifyNoMoreInteractions(xaConnection);
@@ -64,11 +64,24 @@ public class XAConnectionAdapterTest {
 
     @Test
     public void testCloseOutsideTransaction() throws SQLException {
+        subject.transactionCompleted(null);
+        // Should have warning message
+        Assert.assertTrue(subject.isClosed());
+        Mockito.verify(xaConnection).close();
+        Mockito.verifyNoMoreInteractions(connection, xaConnection);
+
         subject.close();
         Assert.assertTrue(subject.isClosed());
+        Mockito.verifyNoMoreInteractions(connection, xaConnection);
+    }
 
+    @Test
+    public void testCloseFailed() throws Exception {
+        Mockito.doThrow(new SQLException("Test")).when(xaConnection).close();
+
+        subject.transactionCompleted(null);
         Mockito.verify(xaConnection).close();
-        Mockito.verifyNoMoreInteractions(xaConnection);
+        Mockito.verifyNoMoreInteractions(connection, xaConnection);
     }
 
     @Test
@@ -102,6 +115,18 @@ public class XAConnectionAdapterTest {
         Mockito.verifyNoMoreInteractions(connection, xaConnection);
     }
 
+
+    @Test
+    public void testUnwrap() throws SQLException {
+        try {
+            subject.unwrap(Object.class);
+            Assert.fail("SQLException expected");
+        } catch (SQLException e) {
+            // Expected
+        }
+        Mockito.verifyNoMoreInteractions(connection, xaConnection);
+    }
+
     @Test
     public void testAbort() throws SQLException {
         Executor executor = Mockito.mock(Executor.class);
@@ -119,7 +144,7 @@ public class XAConnectionAdapterTest {
         Mockito.verifyNoMoreInteractions(connection, xaConnection);
 
         subject.close();
-        Mockito.verify(xaConnection).close();
+        //Mockito.verify(xaConnection).close();
         Mockito.verifyNoMoreInteractions(connection, xaConnection);
 
         try {
@@ -129,8 +154,13 @@ public class XAConnectionAdapterTest {
             // Expected as connection is closed
         }
 
-        Mockito.verify(connection, Mockito.times(2)).isClosed();
+        //Mockito.verify(connection, Mockito.times(2)).isClosed();
         Mockito.verifyNoMoreInteractions(connection, xaConnection);
+
+        subject.transactionCompleted(null);
+        Mockito.verify(xaConnection).close();
+        Mockito.verifyNoMoreInteractions(connection, xaConnection);
+
     }
 
     private interface Callable {
@@ -459,6 +489,20 @@ public class XAConnectionAdapterTest {
                 () -> Mockito.verify(connection).prepareStatement("sql", new String[]{})
         );
     }
+
+    @Test
+    public void testPrepareStatementWithTypeAndConcurrency() throws SQLException {
+        final PreparedStatement result = Mockito.mock(PreparedStatement.class);
+        Mockito.when(connection.prepareStatement("sql", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE))
+                .thenReturn(result);
+        testCallAndClosedCheck(
+                () -> Assert.assertSame(result,
+                        subject.prepareStatement("sql", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE)),
+                () -> Mockito.verify(connection)
+                        .prepareStatement("sql", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE)
+        );
+    }
+
 
     @Test
     public void testPrepareStatementWithTypeAndConcurrencyAndHoldability() throws SQLException {

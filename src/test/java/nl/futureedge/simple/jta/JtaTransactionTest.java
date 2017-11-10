@@ -45,9 +45,9 @@ public class JtaTransactionTest {
         resourceTwo = Mockito.mock(XAResource.class);
         resourceThree = Mockito.mock(XAResource.class);
 
-        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, resourceOne));
-        transaction.enlistResource(new XAResourceAdapter("resourceTwo", true, resourceTwo));
-        transaction.enlistResource(new XAResourceAdapter("resourceThree", true, resourceThree));
+        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, false, resourceOne));
+        transaction.enlistResource(new XAResourceAdapter("resourceTwo", true, false, resourceTwo));
+        transaction.enlistResource(new XAResourceAdapter("resourceThree", true, false, resourceThree));
     }
 
     @Test
@@ -66,7 +66,7 @@ public class JtaTransactionTest {
     public void testCommit() throws Exception {
         XAResource resourceFour = Mockito.mock(XAResource.class);
         Mockito.when(resourceThree.isSameRM(resourceFour)).thenReturn(true);
-        transaction.enlistResource(new XAResourceAdapter("resourceFour", true, resourceFour));
+        transaction.enlistResource(new XAResourceAdapter("resourceFour", true, false, resourceFour));
 
         Mockito.when(resourceTwo.prepare(Mockito.any())).thenReturn(XAResource.XA_RDONLY);
         transactionManager.commit();

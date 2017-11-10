@@ -36,6 +36,7 @@ public class XAConnectionFactoryAdapterTest {
         subject.setXaConnectionFactory(xaConnectionFactory);
         subject.setJtaTransactionManager(transactionManager);
         subject.setSupportsJoin(true);
+        subject.setSupportsSuspend(true);
     }
 
     @Test
@@ -68,6 +69,7 @@ public class XAConnectionFactoryAdapterTest {
         Assert.assertTrue(connection instanceof XAConnectionAdapter);
         Assert.assertEquals("testXaConnectionFactory", ReflectionTestUtils.getField(connection, "resourceManager"));
         Assert.assertEquals(true, ReflectionTestUtils.getField(connection, "supportsJoin"));
+        Assert.assertEquals(true, ReflectionTestUtils.getField(connection, "supportsSuspend"));
         Assert.assertSame(xaConnection, ReflectionTestUtils.getField(connection, "xaConnection"));
         Assert.assertSame(transactionManager, ReflectionTestUtils.getField(connection, "transactionManager"));
 

@@ -14,15 +14,22 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class JtaTransactionManagerTest {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(JtaTransactionManagerTest.class);
+
     private JtaTransactionStore transactionStore;
+    private long transactionId;
     private JtaTransactionManager transactionManager;
 
     @Before
     public void setup() throws Exception {
         transactionStore = Mockito.mock(JtaTransactionStore.class);
+        Mockito.when(transactionStore.nextTransactionId()).thenAnswer(invocation -> transactionId++);
+
         transactionManager = new JtaTransactionManager();
         transactionManager.setUniqueName(this.getClass().getSimpleName());
         Assert.assertEquals(this.getClass().getSimpleName(), transactionManager.getUniqueName());
@@ -41,6 +48,12 @@ public class JtaTransactionManagerTest {
         // Initial
         Assert.assertNull(transactionManager.getTransaction());
         Assert.assertEquals(Status.STATUS_NO_TRANSACTION, transactionManager.getStatus());
+        try {
+            transactionManager.commit();
+            Assert.fail("IllegalStateException expected");
+        } catch(IllegalStateException e) {
+            // Expected
+        }
 
         // Begin
         transactionManager.begin();
@@ -90,22 +103,6 @@ public class JtaTransactionManagerTest {
     }
 
     @Test
-    public void testUnsupported() throws Exception {
-        try {
-            transactionManager.suspend();
-            Assert.fail("UnsupportedOperationException expected");
-        } catch (UnsupportedOperationException e) {
-            // Expected
-        }
-        try {
-            transactionManager.resume(null);
-            Assert.fail("UnsupportedOperationException expected");
-        } catch (UnsupportedOperationException e) {
-            // Expected
-        }
-    }
-
-    @Test
     public void testBeginNextTransactionIdFail() throws Exception {
         Mockito.when(transactionStore.nextTransactionId()).thenThrow(new JtaTransactionStoreException("Test"));
 
@@ -128,8 +125,8 @@ public class JtaTransactionManagerTest {
 
         transactionManager.begin();
         JtaTransaction transaction = transactionManager.getTransaction();
-        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, resourceOne));
-        transaction.enlistResource(new XAResourceAdapter("resourceTwo", true, resourceTwo));
+        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, false, resourceOne));
+        transaction.enlistResource(new XAResourceAdapter("resourceTwo", true, false, resourceTwo));
 
         transactionManager.setTransactionTimeout(67);
 
@@ -138,7 +135,7 @@ public class JtaTransactionManagerTest {
         Mockito.verify(resourceOne).start(Mockito.any(), Mockito.eq(XAResource.TMNOFLAGS));
         Mockito.verify(resourceOne).isSameRM(resourceTwo);
         Mockito.verify(resourceTwo).setTransactionTimeout(15);
-        Mockito.verify(resourceTwo).start(Mockito.any(),Mockito.eq( XAResource.TMNOFLAGS));
+        Mockito.verify(resourceTwo).start(Mockito.any(), Mockito.eq(XAResource.TMNOFLAGS));
 
         // Calls caused by setTransactionTimeout
         Mockito.verify(resourceOne).setTransactionTimeout(67);

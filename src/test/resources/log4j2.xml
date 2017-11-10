@@ -13,5 +13,6 @@
         </AsyncRoot>
 
         <AsyncLogger name="nl.futureedge" level="TRACE"/>
+        <AsyncLogger name="org.springframework" level="DEBUG"/>
     </Loggers>
 </Configuration>

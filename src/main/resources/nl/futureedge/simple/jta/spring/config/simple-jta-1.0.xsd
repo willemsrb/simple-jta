@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-
 <xsd:schema xmlns="http://www.future-edge.nl/schema/simple/jta"
             xmlns:xsd="http://www.w3.org/2001/XMLSchema"
             xmlns:beans="http://www.springframework.org/schema/beans"
@@ -8,8 +7,8 @@
             elementFormDefault="qualified"
             attributeFormDefault="unqualified">
 
-    <xsd:import namespace="http://www.springframework.org/schema/beans" schemaLocation="http://www.springframework.org/schema/beans/spring-beans-3.0.xsd"/>
-    <xsd:import namespace="http://www.springframework.org/schema/tool" schemaLocation="http://www.springframework.org/schema/tool/spring-tool-3.0.xsd"/>
+    <xsd:import namespace="http://www.springframework.org/schema/beans" schemaLocation="http://www.springframework.org/schema/beans/spring-beans.xsd"/>
+    <xsd:import namespace="http://www.springframework.org/schema/tool" schemaLocation="http://www.springframework.org/schema/tool/spring-tool.xsd"/>
 
     <xsd:element name="transaction-manager">
         <xsd:annotation>
@@ -42,6 +41,7 @@
                             </xsd:annotation>
                         </xsd:element>
                     </xsd:choice>
+
                     <xsd:attribute name="name" type="xsd:string">
                         <xsd:annotation>
                             <xsd:documentation><![CDATA[
@@ -51,6 +51,7 @@
                             ]]></xsd:documentation>
                         </xsd:annotation>
                     </xsd:attribute>
+
                     <xsd:attribute name="unique-name" type="xsd:string" use="required">
                         <xsd:annotation>
                             <xsd:documentation><![CDATA[
@@ -58,6 +59,7 @@
                             ]]></xsd:documentation>
                         </xsd:annotation>
                     </xsd:attribute>
+
                     <xsd:attribute name="depends-on" type="xsd:string">
                         <xsd:annotation>
                             <xsd:documentation><![CDATA[
@@ -199,6 +201,7 @@
                             ]]></xsd:documentation>
                         </xsd:annotation>
                     </xsd:attribute>
+
                     <xsd:attribute name="unique-name" type="xsd:string" use="required">
                         <xsd:annotation>
                             <xsd:documentation><![CDATA[
@@ -211,6 +214,28 @@
                         <xsd:annotation>
                             <xsd:documentation><![CDATA[
                                 XADataSource to wrap.
+                            ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
+
+                    <xsd:attribute name="supports-join" type="xsd:boolean">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                                Set to true if this XA datasource correctly supports joining XA resources.
+                            ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
+                    <xsd:attribute name="supports-suspend" type="xsd:boolean">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                                Set to true if this XA datasource supports transaction suspension.
+                            ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
+                    <xsd:attribute name="allow-non-transacted-connections" type="xsd:string">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                                Allow getting connections outside active transaction (yes, no, or warn)
                             ]]></xsd:documentation>
                         </xsd:annotation>
                     </xsd:attribute>
@@ -258,6 +283,7 @@
                             ]]></xsd:documentation>
                         </xsd:annotation>
                     </xsd:attribute>
+
                     <xsd:attribute name="unique-name" type="xsd:string" use="required">
                         <xsd:annotation>
                             <xsd:documentation><![CDATA[
@@ -270,6 +296,21 @@
                         <xsd:annotation>
                             <xsd:documentation><![CDATA[
                                 XAConnectionFactory to wrap.
+                            ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
+
+                    <xsd:attribute name="supports-join" type="xsd:boolean">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                                Set to true if this XA datasource correctly supports joining XA resources.
+                            ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
+                    <xsd:attribute name="supports-suspend" type="xsd:boolean">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                                Set to true if this XA datasource supports transaction suspension.
                             ]]></xsd:documentation>
                         </xsd:annotation>
                     </xsd:attribute>
