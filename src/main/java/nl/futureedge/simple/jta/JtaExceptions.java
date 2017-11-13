@@ -15,7 +15,7 @@ public final class JtaExceptions {
     private static final Logger LOGGER = LoggerFactory.getLogger(JtaExceptions.class);
 
     private JtaExceptions() {
-        // Cannot instantiate
+        throw new IllegalStateException("Class should not be instantiated");
     }
 
     /**

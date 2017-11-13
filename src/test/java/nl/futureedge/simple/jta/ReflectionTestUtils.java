@@ -1,6 +1,9 @@
 package nl.futureedge.simple.jta;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import org.junit.Assert;
 
 public class ReflectionTestUtils {
 
@@ -20,6 +23,17 @@ public class ReflectionTestUtils {
             } else {
                 return findField(superclass, fieldName);
             }
+        }
+    }
+
+    public static void testNotInstantiable(Class<?> clazz) throws ReflectiveOperationException {
+        final Constructor<?> constructor = clazz.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        try {
+            constructor.newInstance();
+            Assert.fail("Constructor invocation should throw IllegalStateException");
+        } catch (final InvocationTargetException e) {
+            Assert.assertEquals("Constructor invocation should throw IllegalStateException", IllegalStateException.class, e.getCause().getClass());
         }
     }
 }

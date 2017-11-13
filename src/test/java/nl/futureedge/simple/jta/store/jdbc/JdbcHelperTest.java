@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import nl.futureedge.simple.jta.ReflectionTestUtils;
+import nl.futureedge.simple.jta.spring.config.SpringConfigParser;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 import org.junit.Assert;
 import org.junit.Test;
@@ -16,6 +17,11 @@ import org.mockito.InOrder;
 import org.mockito.Mockito;
 
 public class JdbcHelperTest {
+
+    @Test
+    public void constructor() throws Exception {
+        ReflectionTestUtils.testNotInstantiable(JdbcHelper.class);
+    }
 
     @Test
     public void doInConnection() throws Exception {

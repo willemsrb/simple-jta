@@ -13,7 +13,7 @@ import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 final class JdbcHelper {
 
     private JdbcHelper() {
-        // Do not instantiate
+        throw new IllegalStateException("Class should not be instantiated");
     }
 
     /**

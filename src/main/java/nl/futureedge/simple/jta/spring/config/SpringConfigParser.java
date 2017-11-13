@@ -9,7 +9,7 @@ import org.w3c.dom.Element;
 public final class SpringConfigParser {
 
     private SpringConfigParser() {
-        // Do not instantiate
+        throw new IllegalStateException("Class should not be instantiated");
     }
 
     public static void handleDependsOn(final BeanDefinitionBuilder builder, final Element element) {
