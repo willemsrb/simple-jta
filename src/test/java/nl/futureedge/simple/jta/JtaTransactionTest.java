@@ -1,5 +1,6 @@
 package nl.futureedge.simple.jta;
 
+import java.util.List;
 import javax.transaction.RollbackException;
 import javax.transaction.Status;
 import javax.transaction.SystemException;
@@ -315,4 +316,36 @@ public class JtaTransactionTest {
             // Expected
         }
     }
+
+    @Test
+    public void testConnections() {
+        final Object key = new Object();
+        final Object otherKey = new Object();
+        final Object connection = new Object();
+
+        Assert.assertNull(transaction.getConnections(key));
+        Assert.assertNull(transaction.getConnections(otherKey));
+
+        transaction.registerConnection(key, connection);
+        final List<Object> connections = transaction.getConnections(key);
+        Assert.assertNotNull(connections);
+        Assert.assertEquals(1, connections.size());
+        Assert.assertSame(connection, connections.get(0));
+        Assert.assertNull(transaction.getConnections(otherKey));
+    }
+
+    @Test
+    public void testEquals() throws Exception {
+        final JtaTransaction one = new JtaTransaction(new GlobalJtaXid("test", 1L), 0, transactionStore);
+        final JtaTransaction two = new JtaTransaction(new GlobalJtaXid("test", 2L), 0, transactionStore);
+
+        Assert.assertTrue(one.equals(one));
+        Assert.assertFalse(one.equals(null));
+        Assert.assertFalse(one.equals(new Object()));
+        Assert.assertFalse(one.equals(new Object()));
+        Assert.assertFalse(one.equals(two));
+
+        Assert.assertEquals(one.hashCode(), new JtaTransaction(new GlobalJtaXid("test", 1L), 0, transactionStore).hashCode());
+    }
+
 }

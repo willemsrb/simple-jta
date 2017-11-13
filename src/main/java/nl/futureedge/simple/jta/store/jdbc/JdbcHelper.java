@@ -12,6 +12,10 @@ import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
  */
 final class JdbcHelper {
 
+    private JdbcHelper() {
+        // Do not instantiate
+    }
+
     /**
      * Execute in a connection.
      * @param pool pool to use if no connection was given

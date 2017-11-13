@@ -30,7 +30,9 @@ public final class BranchJtaXid extends BaseJtaXid {
             // global transaction ID should have the same transaction manager and
             // branch qualifier should contain a branch id (long)
             if (SIMPLE_JTA_FORMAT == xid.getFormatId()
+                    && xid.getGlobalTransactionId() != null
                     && globalTransactionIdMatches(globalTransactionId, xid.getGlobalTransactionId())
+                    && xid.getBranchQualifier() != null
                     && xid.getBranchQualifier().length == 8
                     ) {
                 final ByteBuffer globalBuffer = ByteBuffer.wrap(xid.getGlobalTransactionId());

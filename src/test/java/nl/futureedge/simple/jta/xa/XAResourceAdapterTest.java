@@ -95,4 +95,14 @@ public class XAResourceAdapterTest {
         Mockito.verifyNoMoreInteractions(xaResource);
     }
 
+    @Test
+    public void isSameRM() throws Exception {
+        final XAResource otherResource = Mockito.mock(XAResource.class);
+
+        subject.isSameRM(otherResource);
+
+        Mockito.verify(otherResource).isSameRM(xaResource);
+        Mockito.verifyNoMoreInteractions(otherResource, xaResource);
+    }
+
 }
