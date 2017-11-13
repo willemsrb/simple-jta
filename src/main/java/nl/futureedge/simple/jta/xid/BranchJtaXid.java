@@ -49,12 +49,11 @@ public final class BranchJtaXid extends BaseJtaXid {
     }
 
     private static boolean globalTransactionIdMatches(final byte[] partial, final byte[] toValidate) {
-        assert partial.length == 64;
         if (toValidate.length != 64) {
             return false;
         }
 
-        // Compare up to byte 56 after which to transaction id comess
+        // Compare up to byte 56 after which the transaction id is ignored
         for (int index = 0; index < 56; index++) {
             if (partial[index] != toValidate[index]) {
                 return false;

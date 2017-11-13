@@ -35,6 +35,10 @@ public class JtaXidTest {
         Assert.assertNotEquals(branchXid, new Object());
         Assert.assertEquals(branchXid, new BranchJtaXid("tm001", 1L, branchXid.getBranchId()));
         Assert.assertEquals(branchXid.hashCode(), new BranchJtaXid("tm001", 1L, branchXid.getBranchId()).hashCode());
+
+        Assert.assertNotEquals(branchXid, new BranchJtaXid("tm002", 1L, branchXid.getBranchId()));
+        Assert.assertNotEquals(branchXid, new BranchJtaXid("tm001", 2L, branchXid.getBranchId()));
+        Assert.assertNotEquals(branchXid, new BranchJtaXid("tm001", 1L, branchXid.getBranchId() + 1));
     }
 
     @Test
@@ -45,10 +49,13 @@ public class JtaXidTest {
 
         Xid xid4 = new TestXid(BaseJtaXid.SIMPLE_JTA_FORMAT, null, null);
         Xid xid5 = new TestXid(BaseJtaXid.SIMPLE_JTA_FORMAT, new byte[4], null);
-        Xid xid6 = new TestXid(BaseJtaXid.SIMPLE_JTA_FORMAT, new byte[64], null);
-        Xid xid7 = new TestXid(BaseJtaXid.SIMPLE_JTA_FORMAT, new byte[64], new byte[7]);
+        Xid xid6 = new TestXid(BaseJtaXid.SIMPLE_JTA_FORMAT, xid1.getGlobalTransactionId(), null);
+        Xid xid7 = new TestXid(BaseJtaXid.SIMPLE_JTA_FORMAT, xid1.getGlobalTransactionId(), new byte[7]);
+        Xid xid8 = new TestXid(34534, xid1.getGlobalTransactionId(), xid1.getBranchQualifier());
+        Xid xid9 = new TestXid(BaseJtaXid.SIMPLE_JTA_FORMAT, xid1.getGlobalTransactionId(), xid1.getBranchQualifier());
 
-        Assert.assertEquals(Arrays.asList(xid1, xid2), BranchJtaXid.filterRecoveryXids(new Xid[]{xid1, xid2, xid3, xid4, xid5, xid6, xid7}, "tm001"));
+        Assert.assertEquals(Arrays.asList(xid1, xid2, xid1),
+                BranchJtaXid.filterRecoveryXids(new Xid[]{xid1, xid2, xid3, xid4, xid5, xid6, xid7, xid8, xid9}, "tm001"));
         Assert.assertEquals(Arrays.asList(xid3), BranchJtaXid.filterRecoveryXids(new Xid[]{xid1, xid2, xid3}, "tm002"));
         Assert.assertEquals(Collections.emptyList(), BranchJtaXid.filterRecoveryXids(new Xid[]{xid1, xid2, xid3}, "tm003"));
     }
