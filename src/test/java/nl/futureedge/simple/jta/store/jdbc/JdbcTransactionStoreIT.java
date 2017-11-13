@@ -40,12 +40,14 @@ public class JdbcTransactionStoreIT extends AbstractJdbcTransactionStoreIT {
         final String resource1 = "resourceOne";
         final String resource2 = "resourceTwo";
 
+        Assert.assertFalse(subject.isCommitting(branchXid));
         Assert.assertEquals(null, selectStatus(transactionId));
         Assert.assertEquals(null, selectStatus(transactionId, resource1));
         Assert.assertEquals(null, selectStatus(transactionId, resource2));
 
         // ENLIST
         subject.active(globalXid);
+        Assert.assertFalse(subject.isCommitting(branchXid));
         Assert.assertEquals(null, selectStatus(transactionId));
         Assert.assertEquals(null, selectStatus(transactionId, resource1));
         Assert.assertEquals(null, selectStatus(transactionId, resource2));
@@ -62,6 +64,7 @@ public class JdbcTransactionStoreIT extends AbstractJdbcTransactionStoreIT {
 
         // PREPARE
         subject.preparing(globalXid);
+        Assert.assertFalse(subject.isCommitting(branchXid));
         Assert.assertEquals("PREPARING", selectStatus(transactionId));
         Assert.assertEquals(null, selectStatus(transactionId, resource1));
         Assert.assertEquals(null, selectStatus(transactionId, resource2));
@@ -82,6 +85,7 @@ public class JdbcTransactionStoreIT extends AbstractJdbcTransactionStoreIT {
         Assert.assertEquals(null, selectStatus(transactionId, resource2));
 
         subject.prepared(branchXid, resource2);
+        Assert.assertFalse(subject.isCommitting(branchXid));
         Assert.assertEquals("PREPARING", selectStatus(transactionId));
         Assert.assertEquals("PREPARED", selectStatus(transactionId, resource1));
         Assert.assertEquals("PREPARED", selectStatus(transactionId, resource2));
@@ -93,6 +97,7 @@ public class JdbcTransactionStoreIT extends AbstractJdbcTransactionStoreIT {
 
         // COMMIT
         subject.committing(globalXid);
+        Assert.assertTrue(subject.isCommitting(branchXid));
         Assert.assertEquals("COMMITTING", selectStatus(transactionId));
         Assert.assertEquals("PREPARED", selectStatus(transactionId, resource1));
         Assert.assertEquals("PREPARED", selectStatus(transactionId, resource2));
@@ -118,6 +123,7 @@ public class JdbcTransactionStoreIT extends AbstractJdbcTransactionStoreIT {
         Assert.assertEquals("COMMITTED", selectStatus(transactionId, resource2));
 
         subject.committed(globalXid);
+        Assert.assertFalse(subject.isCommitting(branchXid));
         Assert.assertEquals(null, selectStatus(transactionId));
         Assert.assertEquals(null, selectStatus(transactionId, resource1));
         Assert.assertEquals(null, selectStatus(transactionId, resource2));
