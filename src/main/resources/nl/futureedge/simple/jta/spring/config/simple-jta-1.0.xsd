@@ -333,4 +333,52 @@
             </xsd:complexContent>
         </xsd:complexType>
     </xsd:element>
+
+    <xsd:element name="initialize-database">
+        <xsd:annotation>
+            <xsd:documentation><![CDATA[
+                Initializes the database by creating the Simple JTA database objects.
+            ]]></xsd:documentation>
+            <xsd:appinfo>
+                <tool:annotation>
+                    <tool:exports type="nl.futureedge.simple.jta.store.jdbc.spring.DatabaseInitializer"/>
+                </tool:annotation>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="beans:identifiedType">
+                    <xsd:attribute name="driver" type="xsd:string">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                    JDBC Driver (only need for pre JDBC 4.0 drivers).
+                ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
+                    <xsd:attribute name="url" type="xsd:string" use="required">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                    JDBC URL.
+                ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
+                    <xsd:attribute name="user" type="xsd:string">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                    JDBC User.
+                ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
+                    <xsd:attribute name="password" type="xsd:string">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                    JDBC Password.
+                ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+
 </xsd:schema>

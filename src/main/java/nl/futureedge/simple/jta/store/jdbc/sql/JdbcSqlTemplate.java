@@ -1,5 +1,8 @@
 package nl.futureedge.simple.jta.store.jdbc.sql;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /**
  * SQL template.
  */
@@ -84,5 +87,22 @@ public interface JdbcSqlTemplate {
      * @return SQL to remove all resource information for a transaction identified by id (statement column index 1)
      */
     String deleteResourceStatus();
+
+    static JdbcSqlTemplate determineSqlTemplate(final String url) {
+        final Matcher urlMatcher = Pattern.compile("^jdbc:([a-z]+):.*").matcher(url);
+        final String driver = urlMatcher.matches() ? urlMatcher.group(1) : "unknown";
+
+        switch (driver) {
+            case "hsqldb":
+                return new HsqldbSqlTemplate();
+            case "mariadb":
+            case "mysql":
+                return new MysqlSqlTemplate();
+            case "postgresql":
+                return new PostgresqlSqlTemplate();
+            default:
+                return new DefaultSqlTemplate();
+        }
+    }
 
 }

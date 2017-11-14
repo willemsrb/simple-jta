@@ -2,19 +2,13 @@ package nl.futureedge.simple.jta.store.jdbc;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Collection;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 import nl.futureedge.simple.jta.store.impl.BaseTransactionStore;
 import nl.futureedge.simple.jta.store.impl.PersistentTransaction;
 import nl.futureedge.simple.jta.store.impl.TransactionStatus;
-import nl.futureedge.simple.jta.store.jdbc.sql.DefaultSqlTemplate;
-import nl.futureedge.simple.jta.store.jdbc.sql.HsqldbSqlTemplate;
+import nl.futureedge.simple.jta.store.jdbc.spring.DatabaseInitializer;
 import nl.futureedge.simple.jta.store.jdbc.sql.JdbcSqlTemplate;
-import nl.futureedge.simple.jta.store.jdbc.sql.MysqlSqlTemplate;
-import nl.futureedge.simple.jta.store.jdbc.sql.PostgresqlSqlTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -27,8 +21,6 @@ import org.springframework.beans.factory.annotation.Required;
 public final class JdbcTransactionStore extends BaseTransactionStore implements InitializingBean, DisposableBean {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcTransactionStore.class);
-
-    private static final Pattern JDBC_URL_PATTERN = Pattern.compile("^jdbc:([a-z]+):.*");
 
     private boolean create = false;
 
@@ -98,7 +90,7 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
         pool = new JdbcConnectionPool(jdbcDriver, jdbcUrl, jdbcUser, jdbcPassword);
 
         if (sqlTemplate == null) {
-            sqlTemplate = determineSqlTemplate(jdbcUrl);
+            sqlTemplate = JdbcSqlTemplate.determineSqlTemplate(jdbcUrl);
         }
 
         if (create) {
@@ -106,63 +98,13 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
             try {
                 JdbcHelper.doInConnection(pool, null,
                         connection -> {
-                            JdbcHelper.doInStatement(connection,
-                                    statement -> {
-                                        createTransactionIdSequence(statement);
-                                        createTransactionTable(statement);
-                                        createResourceTable(statement);
-                                    });
+                            DatabaseInitializer.create(connection, sqlTemplate);
                             return null;
                         }
                 );
             } catch (JtaTransactionStoreException e) {
                 LOGGER.info("Could not create transaction tables; ignoring exception...", e.getCause());
             }
-        }
-    }
-
-    private static JdbcSqlTemplate determineSqlTemplate(final String url) {
-        final Matcher urlMatcher = JDBC_URL_PATTERN.matcher(url);
-        final String driver = urlMatcher.matches() ? urlMatcher.group(1) : "unknown";
-
-        switch (driver) {
-            case "hsqldb":
-                LOGGER.info("Using HSQLDB SQL template (url detected)");
-                return new HsqldbSqlTemplate();
-            case "mariadb":
-            case "mysql":
-                LOGGER.info("Using Mysql SQL template (url detected)");
-                return new MysqlSqlTemplate();
-            case "postgresql":
-                LOGGER.info("Using PostgreSQL SQL template (url detected)");
-                return new PostgresqlSqlTemplate();
-            default:
-                LOGGER.info("Using default SQL template");
-                return new DefaultSqlTemplate();
-        }
-    }
-
-    private void createTransactionIdSequence(final Statement statement) {
-        try {
-            statement.execute(sqlTemplate.createTransactionIdSequence());
-        } catch (SQLException e) {
-            LOGGER.info("Could not create transaction id sequence; ignoring exception ...", e);
-        }
-    }
-
-    private void createTransactionTable(final Statement statement) {
-        try {
-            statement.execute(sqlTemplate.createTransactionTable());
-        } catch (SQLException e) {
-            LOGGER.info("Could not create transaction table; ignoring exception ...", e);
-        }
-    }
-
-    private void createResourceTable(final Statement statement) {
-        try {
-            statement.execute(sqlTemplate.createResourceTable());
-        } catch (SQLException e) {
-            LOGGER.info("Could not create resource table; ignoring exception ...", e);
         }
     }
 

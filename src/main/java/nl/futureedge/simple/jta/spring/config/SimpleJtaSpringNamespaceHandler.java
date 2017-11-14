@@ -14,6 +14,7 @@ public final class SimpleJtaSpringNamespaceHandler extends NamespaceHandlerSuppo
         registerBeanDefinitionParser("transaction-manager", new TransactionManagerParser());
         registerBeanDefinitionParser("data-source", new DataSourceParser());
         registerBeanDefinitionParser("connection-factory", new ConnectionFactoryParser());
+        registerBeanDefinitionParser("initialize-database", new DatabaseInitializerParser());
     }
 
 }
