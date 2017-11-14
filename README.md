@@ -59,6 +59,8 @@ The transaction store of choice for Simple JTA is a database. Why? Because all (
 | jtaTransactionStore | Transaction store to 'stably' store transaction information | Yes (Autowired) |
 
 ##### nl.futureedge.simple.jta.store.jdbc.JdbcTransactionStore properties
+The `JdbcTransactionStore` stores the transaction information in a database.
+
 | Property | Explanation | Required |
 |---|---|---|
 | create | If true, the transaction store will try to create the database objects on startup | No (default false) |
@@ -69,7 +71,22 @@ The transaction store of choice for Simple JTA is a database. Why? Because all (
 | sqlTemplate | SQL template to use; if left empty the transaction store will try to detect the database type based on the JDBC url and else use a SQL-2003 compatible default | No |
 | storeAll | If true, the transaction store will record all transaction states; else, the store will only record the minimum state | No (default false) |
 
+*Note: creating the database objects by using the 'create' option is not advised (applications should not have DDL rights on databases)*
+***The distribution contains a jar-file (maven classifier 'sql') that contains the SQL files that can be used to create the database objects.***
+
+##### nl.futureedge.simple.jta.store.jdbc.JdbcDatabaseInitializer
+The `JdbcDatabaseInitializer` can be used to create the database objects needed by the `JdbcTransactionStore` for testing purposes.
+
+| Property | Explanation | Required |
+|---|---|---|
+| driver | The JDBC Driver classname to load (not needed for JDBC 4.0 drivers) | No |
+| url | The JDBC url to connect to the database | Yes |
+| user | The username to use when connecting to the database | No |
+| password | The password to use when connecting to the database | No |
+
+
 ##### nl.futureedge.simple.jta.store.file.FileTransactionStore properties
+The `FileTransactionStore` sotres the transaction information on the file system. It is mainly provided for debug and testing.
 | Property | Explanation | Required |
 |---|---|---|
 | baseDirectory | The base directory for the transaction logs | Yes |
@@ -77,7 +94,7 @@ The transaction store of choice for Simple JTA is a database. Why? Because all (
 
 
 ### Configuring the database connection
-A JDBC datasource is not suited to participate in distributed (JTA) transactions. To handle that an application needs to use a JDBC XA datasource. However, most application frameworks only work on datasources and not on XA datasources. Fortunately a JDBC XA datasource only exposes some methods that only need to be called by the transaction manager and ultimately exposes a 'normal' JDBC connection. Therefor Simple JTA provides an adapter that wraps a XA datasource, handles the transaction manager methods and exposes a 'normal' JDBC datasource.
+A 'normal' JDBC datasource/connection is not suited to participate in distributed (JTA) transactions. To handle that an application needs to use a JDBC XA datasource/connection. However, most application frameworks only work on datasources and not on XA datasources. Fortunately a JDBC XA datasource only exposes some methods that only need to be called by the transaction manager and ultimately exposes a 'normal' JDBC connection. Therefor Simple JTA provides an adapter that wraps a XA datasource, handles the transaction manager methods and exposes a 'normal' JDBC datasource.
 ```
     <!-- Vendor provided XA DataSource -->
     <bean name="xaDataSource" class="org.hsqldb.jdbc.pool.JDBCXADataSource">
