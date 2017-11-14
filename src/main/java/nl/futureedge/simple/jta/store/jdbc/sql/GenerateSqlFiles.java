@@ -9,9 +9,9 @@ package nl.futureedge.simple.jta.store.jdbc.sql;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,6 +19,7 @@ package nl.futureedge.simple.jta.store.jdbc.sql;
  * limitations under the License.
  * #L%
  */
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -55,9 +56,12 @@ public final class GenerateSqlFiles {
 
         TEMPLATES.forEach((code, template) -> {
             try (final PrintWriter writer = new PrintWriter(new FileWriter(new File(directory, code + ".sql")))) {
-                writer.println(template.createTransactionIdSequence());
-                writer.println(template.createTransactionTable());
-                writer.println(template.createResourceTable());
+                writer.println(template.createTransactionIdSequence() + ";");
+                writer.println();
+                writer.println(template.createTransactionTable() + ";");
+                writer.println();
+                writer.println(template.createResourceTable() + ";");
+                writer.println();
             } catch (final IOException e) {
                 throw new IllegalArgumentException("Could not write SQL to file", e);
             }
