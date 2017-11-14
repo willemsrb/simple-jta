@@ -1,17 +1,15 @@
-package nl.futureedge.simple.jta.store.jdbc.spring;
+package nl.futureedge.simple.jta.store.jdbc;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import nl.futureedge.simple.jta.store.jdbc.JdbcTransactionStore;
 import nl.futureedge.simple.jta.store.jdbc.sql.JdbcSqlTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Required;
 
-public final class DatabaseInitializer implements InitializingBean {
+public final class JdbcDatabaseInitializer implements InitializingBean {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcTransactionStore.class);
 
@@ -55,22 +53,8 @@ public final class DatabaseInitializer implements InitializingBean {
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        // Load driver
-        if (jdbcDriver != null && !"".equals(jdbcDriver)) {
-            Class.forName(jdbcDriver);
-        }
-
-        // Supplier
-        final Connection connection;
-        if (jdbcUser != null && !"".equals(jdbcUser)) {
-            connection = DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPassword);
-        } else {
-            connection = DriverManager.getConnection(jdbcUrl);
-        }
-        try {
+        try (final Connection connection = JdbcHelper.createConnectionSupplier(jdbcDriver, jdbcUrl, jdbcUser, jdbcPassword).getConnection()) {
             create(connection, JdbcSqlTemplate.determineSqlTemplate(jdbcUrl));
-        } finally {
-            connection.close();
         }
     }
 

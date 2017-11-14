@@ -7,7 +7,7 @@ import org.springframework.beans.factory.xml.NamespaceHandlerSupport;
 /**
  * A {@link org.springframework.beans.factory.xml.NamespaceHandler} for the simple-jta namespace.
  */
-public final class SimpleJtaSpringNamespaceHandler extends NamespaceHandlerSupport {
+public final class NamespaceHandler extends NamespaceHandlerSupport {
 
     @Override
     public void init() {

@@ -1,6 +1,7 @@
 package nl.futureedge.simple.jta.store.jdbc;
 
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -96,7 +97,27 @@ final class JdbcHelper {
         }
     }
 
+    public static ConnectionSupplier createConnectionSupplier(String driver, String url, String user, String password) throws ClassNotFoundException {
+        // Load driver
+        if (driver != null && !"".equals(driver)) {
+            Class.forName(driver);
+        }
 
+        // Supplier
+        if (user != null && !"".equals(user)) {
+            return () -> DriverManager.getConnection(url, user, password);
+        } else {
+            return () -> DriverManager.getConnection(url);
+        }
+    }
+
+    /**
+     * Connection supplier.
+     */
+    @FunctionalInterface
+    public interface ConnectionSupplier {
+        Connection getConnection() throws SQLException;
+    }
 
     /**
      * Code to execute in a connection.

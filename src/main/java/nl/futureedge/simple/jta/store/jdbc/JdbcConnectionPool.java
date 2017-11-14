@@ -1,7 +1,6 @@
 package nl.futureedge.simple.jta.store.jdbc;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +15,7 @@ final class JdbcConnectionPool {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcConnectionPool.class);
 
-    private final ConnectionSupplier connectionSupplier;
+    private final JdbcHelper.ConnectionSupplier connectionSupplier;
 
     private final List<Connection> all = new ArrayList<>();
     private final List<Connection> available = new ArrayList<>();
@@ -30,22 +29,11 @@ final class JdbcConnectionPool {
      * @throws JtaTransactionStoreException thrown, when the driver could not be loaded or the connection could not be made
      */
     JdbcConnectionPool(final String driver, final String url, final String user, final String password) throws JtaTransactionStoreException {
-        // Load driver
-        if (driver != null && !"".equals(driver)) {
-            try {
-                Class.forName(driver);
-            } catch (final ClassNotFoundException e) {
-                throw new JtaTransactionStoreException("Could not load transaction store driver", e);
-            }
+        try {
+            connectionSupplier = JdbcHelper.createConnectionSupplier(driver, url, user, password);
+        } catch (ClassNotFoundException e) {
+            throw new JtaTransactionStoreException("Could not load JDBC driver class", e);
         }
-
-        // Supplier
-        if (user != null && !"".equals(user)) {
-            connectionSupplier = () -> DriverManager.getConnection(url, user, password);
-        } else {
-            connectionSupplier = () -> DriverManager.getConnection(url);
-        }
-
         available.add(createConnection());
     }
 
@@ -103,8 +91,4 @@ final class JdbcConnectionPool {
         }
     }
 
-    @FunctionalInterface
-    private interface ConnectionSupplier {
-        Connection getConnection() throws SQLException;
-    }
 }

@@ -7,7 +7,6 @@ import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 import nl.futureedge.simple.jta.store.impl.BaseTransactionStore;
 import nl.futureedge.simple.jta.store.impl.PersistentTransaction;
 import nl.futureedge.simple.jta.store.impl.TransactionStatus;
-import nl.futureedge.simple.jta.store.jdbc.spring.DatabaseInitializer;
 import nl.futureedge.simple.jta.store.jdbc.sql.JdbcSqlTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,7 +97,7 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
             try {
                 JdbcHelper.doInConnection(pool, null,
                         connection -> {
-                            DatabaseInitializer.create(connection, sqlTemplate);
+                            JdbcDatabaseInitializer.create(connection, sqlTemplate);
                             return null;
                         }
                 );

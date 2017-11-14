@@ -18,10 +18,13 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
+/**
+ * Test the suspend/resume functionality.
+ */
 @RunWith(Parameterized.class)
-public class SimpleJtaSuspendIT {
+public class SuspendIT {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SimpleJtaSuspendIT.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SuspendIT.class);
 
     @Autowired
     private PlatformTransactionManager springTransactionManager;
@@ -40,7 +43,7 @@ public class SimpleJtaSuspendIT {
         };
     }
 
-    public SimpleJtaSuspendIT(final String testContextConfiguration) {
+    public SuspendIT(final String testContextConfiguration) {
         this.testContextConfiguration = testContextConfiguration;
     }
 

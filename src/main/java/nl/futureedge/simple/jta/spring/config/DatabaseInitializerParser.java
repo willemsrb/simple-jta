@@ -1,7 +1,7 @@
 package nl.futureedge.simple.jta.spring.config;
 
 
-import nl.futureedge.simple.jta.store.jdbc.spring.DatabaseInitializer;
+import nl.futureedge.simple.jta.store.jdbc.JdbcDatabaseInitializer;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
@@ -11,7 +11,7 @@ import org.w3c.dom.Element;
 
 /**
  * {@link org.springframework.beans.factory.xml.BeanDefinitionParser} that parses an {@code initalize-database} element and creates a {@link BeanDefinition} for
- * an {@link DatabaseInitializer}.
+ * an {@link JdbcDatabaseInitializer}.
  */
 public final class DatabaseInitializerParser extends AbstractBeanDefinitionParser {
 
@@ -23,7 +23,7 @@ public final class DatabaseInitializerParser extends AbstractBeanDefinitionParse
     @Override
     protected AbstractBeanDefinition parseInternal(final Element element, final ParserContext parserContext) {
         // DATABASE-INITIALIZER
-        final BeanDefinitionBuilder builder = BeanDefinitionBuilder.rootBeanDefinition(DatabaseInitializer.class);
+        final BeanDefinitionBuilder builder = BeanDefinitionBuilder.rootBeanDefinition(JdbcDatabaseInitializer.class);
 
         builder.addPropertyValue("driver", element.getAttribute("driver"));
         builder.addPropertyValue("url", element.getAttribute("url"));

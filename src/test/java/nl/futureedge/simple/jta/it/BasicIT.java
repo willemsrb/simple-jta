@@ -26,10 +26,13 @@ import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.core.MessageCreator;
 import org.springframework.transaction.support.TransactionTemplate;
 
+/**
+ * Basic IT tests.
+ */
 @RunWith(Parameterized.class)
-public class SimpleJtaIT {
+public class BasicIT {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SimpleJtaIT.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(BasicIT.class);
 
     private static Properties portProperties = new Properties();
     private static GenericXmlApplicationContext databaseContext;
@@ -100,7 +103,7 @@ public class SimpleJtaIT {
         };
     }
 
-    public SimpleJtaIT(String testContextConfiguration) {
+    public BasicIT(String testContextConfiguration) {
         this.testContextConfiguration = testContextConfiguration;
     }
 

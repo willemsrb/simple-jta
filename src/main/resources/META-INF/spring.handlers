@@ -1,1 +1,1 @@
-http\://www.future-edge.nl/schema/simple/jta=nl.futureedge.simple.jta.spring.config.SimpleJtaSpringNamespaceHandler
+http\://www.future-edge.nl/schema/simple/jta=nl.futureedge.simple.jta.spring.config.NamespaceHandler
