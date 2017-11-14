@@ -466,7 +466,6 @@
                 </executions>
             </plugin>
 
-
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
@@ -498,16 +497,6 @@
                 <artifactId>license-maven-plugin</artifactId>
                 <version>1.14</version>
                 <executions>
-                    <execution>
-                        <id>check-license-header</id>
-                        <phase>prepare-package</phase>
-                        <goals>
-                            <goal>check-file-header</goal>
-                        </goals>
-                        <configuration>
-                            <failOnMissingHeader>true</failOnMissingHeader>
-                        </configuration>
-                    </execution>
                     <execution>
                         <id>add-third-party</id>
                         <phase>generate-resources</phase>
