@@ -365,6 +365,7 @@
                         <configuration>
                             <runOptions>--network ${docker.network} -p 5432 -e POSTGRES_USER=simple -e POSTGRES_PASSWORD=jta -e POSTGRES_DB=trans</runOptions>
                             <image>postgres:9.6</image>
+                            <hostnameProperty>postgresql.host</hostnameProperty>
                             <portPropertiesAsString>5432/tcp=postgresql.port</portPropertiesAsString>
                             <!--
                             -p 5432:5432
@@ -387,6 +388,7 @@
                                 MYSQL_ROOT_PASSWORD=secret
                             </runOptions>
                             <image>mariadb:10.3</image>
+                            <hostnameProperty>mariadb.host</hostnameProperty>
                             <portPropertiesAsString>3306/tcp=mariadb.port</portPropertiesAsString>
                             <!--
                             -p 3306:3306
@@ -395,6 +397,19 @@
                             <keys>
                                 <key>mariadb.port</key>
                             </keys>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>wait-for-postgresql</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <daemon>false</daemon>
+                            <image>jwilder/dockerize</image>
+                            <runOptions>--network ${docker.network}</runOptions>
+                            <command>dockerize -wait tcp://${postgresql.host}:5432 -wait tcp://${mariadb.host}:3306  -timeout 30s echo databases connected!</command>
                         </configuration>
                     </execution>
 
