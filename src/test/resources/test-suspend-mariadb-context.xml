@@ -19,11 +19,9 @@
     </simple-jta:transaction-manager>
 
     <!-- DataSource -->
-    <bean name="xaDataSource" class="org.mariadb.jdbc.MariaDbDataSource">
-        <property name="url" value="jdbc:mariadb://localhost:${mariadb.port}/trans"/>
-        <property name="user" value="simple"/>
-        <property name="password" value="jta"/>
-    </bean>
+    <simple-jta:xa-data-source name="xaDataSource" driver="org.mariadb.jdbc.MariaDbDataSource"
+                               host="localhost" port="${mariadb.port}" database="trans"
+                               user="simple" password="jta"/>
 
     <simple-jta:data-source name="dataSource" unique-name="database1" xa-data-source="xaDataSource"/>
 

@@ -396,4 +396,91 @@
         </xsd:complexType>
     </xsd:element>
 
+    <xsd:element name="xa-data-source">
+        <xsd:annotation>
+            <xsd:documentation><![CDATA[
+                Creates an JDBC DataSource wrapped around a supplied XADataSource to support JTA
+                transactions.
+            ]]></xsd:documentation>
+            <xsd:appinfo>
+                <tool:annotation>
+                    <tool:exports type="javax.sql.DataSource"/>
+                </tool:annotation>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="beans:identifiedType">
+                    <xsd:attribute name="name" type="xsd:string">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                                Can be used to create one or more aliases illegal in an (XML) id.
+                                Multiple aliases can be separated by any number of spaces, commas,
+                                or semi-colons (or indeed any mixture of the three).
+                            ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
+                    
+                    <xsd:attribute name="driver" type="xsd:string" use="required">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                                XA DataSource class name.
+                            ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
+                    <xsd:attribute name="host" type="xsd:string" use="required">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                                Database server host.
+                            ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
+                    <xsd:attribute name="port" type="xsd:string">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                                Database server port
+                            ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
+                    <xsd:attribute name="database" type="xsd:string" use="required">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                                Database name.
+                            ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
+                    <xsd:attribute name="user" type="xsd:string">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                                Database user.
+                            ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
+                    <xsd:attribute name="password" type="xsd:string">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                                Database password.
+                            ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
+
+                    <xsd:attribute name="depends-on" type="xsd:string">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                                The names of the beans that this bean depends on being initialized.
+                                The bean factory will guarantee that these beans get initialized
+                                before this bean.
+
+                                Note that dependencies are normally expressed through bean properties
+                                or constructor arguments. This property should just be necessary for
+                                other kinds of dependencies like statics (*ugh*) or database preparation
+                                on startup.
+                            ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+
 </xsd:schema>

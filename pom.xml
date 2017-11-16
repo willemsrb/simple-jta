@@ -141,7 +141,6 @@
             <scope>provided</scope>
         </dependency>
 
-
         <!-- Unit tests -->
         <dependency>
             <groupId>junit</groupId>
@@ -217,12 +216,12 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Embedded database -->
+        <!-- Hsqldb database -->
         <dependency>
             <groupId>org.hsqldb</groupId>
             <artifactId>hsqldb</artifactId>
             <version>${hsqldb.version}</version>
-            <scope>test</scope>
+            <scope>provided</scope>
         </dependency>
 
         <!-- PostgreSQL driver -->
@@ -230,7 +229,7 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>42.1.4</version>
-            <scope>test</scope>
+            <scope>provided</scope>
         </dependency>
 
         <!-- MySQL driver -->
@@ -238,11 +237,13 @@
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <version>5.1.44</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.mariadb.jdbc</groupId>
             <artifactId>mariadb-java-client</artifactId>
             <version>2.1.2</version>
+            <scope>provided</scope>
         </dependency>
 
         <!-- Embedded broker -->
@@ -382,7 +383,9 @@
                             <goal>write-properties</goal>
                         </goals>
                         <configuration>
-                            <runOptions>--network ${docker.network} -p 3306 -e MYSQL_USER=simple -e MYSQL_PASSWORD=jta -e MYSQL_DATABASE=trans -e MYSQL_ROOT_PASSWORD=secret</runOptions>
+                            <runOptions>--network ${docker.network} -p 3306 -e MYSQL_USER=simple -e MYSQL_PASSWORD=jta -e MYSQL_DATABASE=trans -e
+                                MYSQL_ROOT_PASSWORD=secret
+                            </runOptions>
                             <image>mariadb:10.3</image>
                             <portPropertiesAsString>3306/tcp=mariadb.port</portPropertiesAsString>
                             <!--
@@ -541,7 +544,7 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.6.1</version>
-                </plugin>                
+                </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-gpg-plugin</artifactId>
@@ -591,7 +594,7 @@
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>exec-maven-plugin</artifactId>
                     <version>1.6.0</version>
-                </plugin>                
+                </plugin>
                 <plugin>
                     <groupId>org.sonatype.plugins</groupId>
                     <artifactId>nexus-staging-maven-plugin</artifactId>

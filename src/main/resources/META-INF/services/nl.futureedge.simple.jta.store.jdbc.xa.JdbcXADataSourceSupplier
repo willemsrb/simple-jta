@@ -1,0 +1,4 @@
+nl.futureedge.simple.jta.store.jdbc.xa.HsqldbXADataSourceSupplier
+nl.futureedge.simple.jta.store.jdbc.xa.MariadbXADataSourceSupplier
+nl.futureedge.simple.jta.store.jdbc.xa.MysqlXADataSourceSupplier
+nl.futureedge.simple.jta.store.jdbc.xa.PostgresqlXADataSourceSupplier

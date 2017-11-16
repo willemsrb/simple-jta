@@ -12,11 +12,8 @@
     <context:annotation-config/>
 
     <!-- DataSource -->
-    <bean name="xaDataSource" class="org.hsqldb.jdbc.pool.JDBCXADataSource">
-        <property name="url" value="jdbc:hsqldb:hsql://localhost:${test.database.port}/test"/>
-        <property name="user" value="sa"/>
-        <property name="password" value=""/>
-    </bean>
+    <simple-jta:xa-data-source name="xaDataSource" driver="org.hsqldb.jdbc.pool.JDBCXADataSource" host="localhost" port="${test.database.port}" database="test"
+                               user="sa" password=""/>
 
     <simple-jta:data-source name="dataSource" unique-name="database1" xa-data-source="xaDataSource"
                             supports-join="false" supports-suspend="false" allow-non-transacted-connections="warn"/>
@@ -27,7 +24,7 @@
     </bean>
 
     <simple-jta:connection-factory name="connectionFactory" unique-name="message1" xa-connection-factory="xaConnectionFactory"
-                                   supports-join="false" supports-suspend="false" />
+                                   supports-join="false" supports-suspend="false"/>
 
     <!-- Templates -->
 

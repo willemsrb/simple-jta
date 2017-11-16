@@ -13,6 +13,7 @@ public final class NamespaceHandler extends NamespaceHandlerSupport {
     public void init() {
         registerBeanDefinitionParser("transaction-manager", new TransactionManagerParser());
         registerBeanDefinitionParser("data-source", new DataSourceParser());
+        registerBeanDefinitionParser("xa-data-source", new XaDataSourceParser());
         registerBeanDefinitionParser("connection-factory", new ConnectionFactoryParser());
         registerBeanDefinitionParser("initialize-database", new DatabaseInitializerParser());
     }
