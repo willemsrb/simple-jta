@@ -400,7 +400,7 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <id>wait-for-postgresql</id>
+                        <id>wait-for-databases</id>
                         <phase>pre-integration-test</phase>
                         <goals>
                             <goal>run</goal>
