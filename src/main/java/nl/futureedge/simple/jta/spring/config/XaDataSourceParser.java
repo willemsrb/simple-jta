@@ -1,6 +1,6 @@
 package nl.futureedge.simple.jta.spring.config;
 
-import nl.futureedge.simple.jta.store.jdbc.xa.JdbcXADataSourceFactory;
+import nl.futureedge.simple.jta.jdbc.xa.JdbcXADataSourceFactory;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;

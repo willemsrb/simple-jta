@@ -25,6 +25,7 @@ Simple JTA is designed to work in a [Spring](https://spring.io) powered applicat
 The Simple JTA transaction manager needs two things configured to be able to work correctly:
 1. Unique name(s) to identify it (and the XA resources) and distinguish its transactions; without a unique name two different transaction managers could use the same transaction id and a XA resource (database or messaging store) would become tangled up. When doing recovery after a crash event it would use that unique name to determine if partial transactions should be committed or rolled back.
 2. A transaction store to 'stably' store transaction information; without a guaranteed store of transaction information a transaction manager would never be able to reliably determine the transaction status when doing recovery.
+
 ```
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
@@ -86,7 +87,8 @@ The `JdbcDatabaseInitializer` can be used to create the database objects needed 
 
 
 ##### nl.futureedge.simple.jta.store.file.FileTransactionStore properties
-The `FileTransactionStore` sotres the transaction information on the file system. It is mainly provided for debug and testing.
+The `FileTransactionStore` stores the transaction information on the file system. It is mainly provided for debug and testing.
+
 | Property | Explanation | Required |
 |---|---|---|
 | baseDirectory | The base directory for the transaction logs | Yes |
@@ -95,6 +97,7 @@ The `FileTransactionStore` sotres the transaction information on the file system
 
 ### Configuring the database connection
 A 'normal' JDBC datasource/connection is not suited to participate in distributed (JTA) transactions. To handle that an application needs to use a JDBC XA datasource/connection. However, most application frameworks only work on datasources and not on XA datasources. Fortunately a JDBC XA datasource only exposes some methods that only need to be called by the transaction manager and ultimately exposes a 'normal' JDBC connection. Therefor Simple JTA provides an adapter that wraps a XA datasource, handles the transaction manager methods and exposes a 'normal' JDBC datasource.
+
 ```
     <!-- Vendor provided XA DataSource -->
     <bean name="xaDataSource" class="org.hsqldb.jdbc.pool.JDBCXADataSource">
@@ -130,6 +133,7 @@ When a connection is requested 'outside' a transaction the adapter will return a
 
 ### Configuring the messaging connection
 As with the database connection a JMS connection factory is not suited to participate in distributed (JTA) transactions. Simple JTA provides an adapter that wraps a JMS XA connection factory, handles the transaciton manager methods and exposes a 'normal' JMS connection factory.
+
 ```
     <!-- Vendor provided XA ConnectionFactory -->
     <bean name="xaConnectionFactory" class="org.apache.activemq.ActiveMQXAConnectionFactory">
@@ -161,6 +165,7 @@ When a session is created with the argument `transacted` set to `false` an unman
 
 ### Configuring using the Simple JTA namespace
 Using the simple-jta namespace this spring configuration can be compressed considerably:
+
 ```
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
@@ -177,11 +182,9 @@ Using the simple-jta namespace this spring configuration can be compressed consi
     </simple-jta:transaction-manager>
 
     <!-- DataSource -->
-    <bean name="xaDataSource" class="org.hsqldb.jdbc.pool.JDBCXADataSource">
-        <property name="url" value="jdbc:hsqldb:hsql://localhost:${test.database.port}/test"/>
-        <property name="user" value="sa"/>
-        <property name="password" value=""/>
-    </bean>
+    <simple-jta:xa-data-source name="xaDataSource" driver="org.hsqldb.jdbc.pool.JDBCXADataSource"
+                               host="localhost" port="${test.database.port}" database="test"
+                               user="sa" password=""/>
 
     <simple-jta:data-source name="dataSource" unique-name="database1" xa-data-source="xaDataSource"
                             supports-join="false" supports-suspend="false" allow-non-transacted-connections="warn"/>
@@ -195,6 +198,20 @@ Using the simple-jta namespace this spring configuration can be compressed consi
                                    supports-join="false" supports-suspend="false" />
 </beans>
 ```
+
+##### nl.futureedge.simple.jta.jdbc.xa.JdbcXADataSourceFactory (`<simple-jta:xa-data-source />`) properties
+The `JdbcXADataSourceFactory` can be used to enable switching of XA data sources using only configuration. As there is no standard 'configuration' interface implemented by XA data sources, different XA data sources require setting connection properties via all sorts of methods. The `JdbcXADataSourceFactory` abstracts these differences by implementing `JdbcXADataSourceSupplier` as services.
+
+| Property | Explanation | Required |
+|---|---|---|
+| driver | The classname of the XA DataSource | Yes |
+| host | The host to use when connecting to the database | Yes |
+| port | The port to use when connecting to the database | No |
+| database | The name of the database to connect to | Yes |
+| user | The username to use when connecting to the database | No |
+| password | The password to use when connecting to the database | No |
+
+*note: this is functionality is mainly supplied to connect to a different (in memory) xa database when doing tests*
 
 
 ### Transaction suspension

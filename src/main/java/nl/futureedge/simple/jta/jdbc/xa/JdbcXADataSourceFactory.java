@@ -1,4 +1,4 @@
-package nl.futureedge.simple.jta.store.jdbc.xa;
+package nl.futureedge.simple.jta.jdbc.xa;
 
 import java.util.HashMap;
 import java.util.Map;

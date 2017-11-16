@@ -1,18 +1,18 @@
-package nl.futureedge.simple.jta.store.jdbc.xa;
+package nl.futureedge.simple.jta.jdbc.xa;
 
+import com.mysql.jdbc.jdbc2.optional.MysqlXADataSource;
 import java.sql.SQLException;
 import java.util.Properties;
 import javax.sql.XADataSource;
-import org.mariadb.jdbc.MariaDbDataSource;
 
 /**
  * MySQL XA DataSource supplier.
  */
-public final class MariadbXADataSourceSupplier implements JdbcXADataSourceSupplier {
+public final class MysqlXADataSourceSupplier implements JdbcXADataSourceSupplier {
 
     @Override
     public String getDriver() {
-        return "org.mariadb.jdbc.MariaDbDataSource";
+        return "com.mysql.jdbc.jdbc2.optional.MysqlXADataSource";
     }
 
     @Override
@@ -20,7 +20,7 @@ public final class MariadbXADataSourceSupplier implements JdbcXADataSourceSuppli
                                         final Properties additionalProperties)
             throws SQLException {
 
-        final MariaDbDataSource xaDataSource = new MariaDbDataSource();
+        final MysqlXADataSource xaDataSource = new MysqlXADataSource();
 
         xaDataSource.setServerName(host);
         if (port != null) {
