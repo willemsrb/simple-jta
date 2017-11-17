@@ -3,13 +3,22 @@ package nl.futureedge.simple.jta.store.jdbc;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import nl.futureedge.simple.jta.JtaTransactionManager;
 import nl.futureedge.simple.jta.store.jdbc.sql.JdbcSqlTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Required;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 
-public final class JdbcDatabaseInitializer implements InitializingBean {
+public final class JdbcDatabaseInitializer implements InitializingBean, BeanFactoryPostProcessor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcTransactionStore.class);
 
@@ -55,6 +64,30 @@ public final class JdbcDatabaseInitializer implements InitializingBean {
     public void afterPropertiesSet() throws Exception {
         try (final Connection connection = JdbcHelper.createConnectionSupplier(jdbcDriver, jdbcUrl, jdbcUser, jdbcPassword).getConnection()) {
             create(connection, JdbcSqlTemplate.determineSqlTemplate(jdbcUrl));
+        }
+    }
+
+    @Override
+    public void postProcessBeanFactory(final ConfigurableListableBeanFactory beanFactory) throws BeansException {
+        // List all JdbcDatabaseInitializer beans
+        final List<String> initializerNames = asList(beanFactory.getBeanNamesForType(JdbcDatabaseInitializer.class));
+
+        // For each JtaTransactionManager, add all JdbcDatabaseInitializer beans as depends-on
+        final String[] transactionManagerNames = beanFactory.getBeanNamesForType(JtaTransactionManager.class);
+        for (final String transactionManagerName : transactionManagerNames) {
+            final BeanDefinition transactionManagerDefinition = beanFactory.getBeanDefinition(transactionManagerName);
+            final List<String> dependsOn = new ArrayList<>();
+            dependsOn.addAll(asList(transactionManagerDefinition.getDependsOn()));
+            dependsOn.addAll(initializerNames);
+            transactionManagerDefinition.setDependsOn(dependsOn.toArray(new String[0]));
+        }
+    }
+
+    private List<String> asList(final String[] values) {
+        if (values == null) {
+            return Collections.emptyList();
+        } else {
+            return Arrays.asList(values);
         }
     }
 
