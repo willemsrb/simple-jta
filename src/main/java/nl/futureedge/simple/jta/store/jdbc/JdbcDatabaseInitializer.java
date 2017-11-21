@@ -11,7 +11,6 @@ import nl.futureedge.simple.jta.JtaTransactionManager;
 import nl.futureedge.simple.jta.store.jdbc.sql.JdbcSqlTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Required;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -68,7 +67,7 @@ public final class JdbcDatabaseInitializer implements InitializingBean, BeanFact
     }
 
     @Override
-    public void postProcessBeanFactory(final ConfigurableListableBeanFactory beanFactory) throws BeansException {
+    public void postProcessBeanFactory(final ConfigurableListableBeanFactory beanFactory) {
         // List all JdbcDatabaseInitializer beans
         final List<String> initializerNames = asList(beanFactory.getBeanNamesForType(JdbcDatabaseInitializer.class));
 
