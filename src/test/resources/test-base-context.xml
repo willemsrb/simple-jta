@@ -37,6 +37,7 @@
     </bean>
 
     <bean name="jmsTemplate" class="org.springframework.jms.core.JmsTemplate">
+        <property name="sessionTransacted" value="true" />
         <property name="connectionFactory" ref="connectionFactory"/>
     </bean>
 </beans>

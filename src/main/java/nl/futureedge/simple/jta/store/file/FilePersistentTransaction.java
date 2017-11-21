@@ -51,7 +51,9 @@ final class FilePersistentTransaction implements PersistentTransaction {
             final int resourceIndex = line.indexOf(RESOURCE_MANAGER_SEPARATOR);
             if (resourceIndex != -1) {
                 // Line contains resource status
-                resourceStatuses.put(line.substring(0, resourceIndex), TransactionStatus.valueOf(line.substring(resourceIndex + 1)));
+                final String partResource = line.substring(0, resourceIndex);
+                final String partStatus = line.substring(resourceIndex + 1);
+                resourceStatuses.put(partResource, TransactionStatus.valueOf(partStatus));
             } else {
                 // Line contains global status
                 status = TransactionStatus.valueOf(line);
@@ -86,7 +88,7 @@ final class FilePersistentTransaction implements PersistentTransaction {
                 lineToWrite.append(Long.toString(branchId));
                 lineToWrite.append(RESOURCE_MANAGER_SEPARATOR);
             }
-            lineToWrite.append(status.getText());
+            lineToWrite.append(status.toString());
             lineToWrite.append(ENTRY_SEPARATOR);
 
             // Flush to disk

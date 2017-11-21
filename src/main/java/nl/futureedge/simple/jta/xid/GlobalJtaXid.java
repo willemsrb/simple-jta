@@ -20,7 +20,6 @@ public final class GlobalJtaXid extends BaseJtaXid {
         super(transactionManager, transactionId, null);
     }
 
-
     /**
      * Create a branch XID for this global transaction id.
      * @return a branch XID (using a new branch id)

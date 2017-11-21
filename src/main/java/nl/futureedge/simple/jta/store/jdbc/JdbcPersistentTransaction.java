@@ -46,7 +46,7 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
 
         JdbcHelper.doInConnection(pool, reservedConnection, connection -> {
             final int rows = JdbcHelper.prepareAndExecuteUpdate(connection, sqlTemplate.updateTransactionStatus(), updateStatement -> {
-                updateStatement.setString(1, status.getText());
+                updateStatement.setString(1, status.toString());
                 updateStatement.setDate(2, now);
                 updateStatement.setLong(3, transactionId);
             });
@@ -54,7 +54,7 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
             if (rows == 0) {
                 JdbcHelper.prepareAndExecuteUpdate(connection, sqlTemplate.insertTransactionStatus(), insertStatement -> {
                     insertStatement.setLong(1, transactionId);
-                    insertStatement.setString(2, status.getText());
+                    insertStatement.setString(2, status.toString());
                     insertStatement.setDate(3, now);
                     insertStatement.setDate(4, now);
                 });
@@ -78,7 +78,7 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
 
         JdbcHelper.doInConnection(pool, reservedConnection, connection -> {
             final int rows = JdbcHelper.prepareAndExecuteUpdate(connection, sqlTemplate.updateResourceStatus(), updateStatement -> {
-                updateStatement.setString(1, status.getText());
+                updateStatement.setString(1, status.toString());
                 if (stackTrace == null) {
                     updateStatement.setNull(2, Types.CLOB);
                 } else {
@@ -95,7 +95,7 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
                     insertStatement.setLong(1, transactionId);
                     insertStatement.setLong(2, branchId);
                     insertStatement.setString(3, resourceManager);
-                    insertStatement.setString(4, status.getText());
+                    insertStatement.setString(4, status.toString());
                     if (stackTrace == null) {
                         insertStatement.setNull(5, Types.CLOB);
                     } else {

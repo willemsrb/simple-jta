@@ -258,17 +258,118 @@ public final class JtaTransaction implements Transaction {
     }
 
     /* ***************************** */
-    /* *** COMMIT/ROLLBACK ********* */
+    /* *** COMMIT ****************** */
     /* ***************************** */
 
     @Override
     public synchronized void commit() throws RollbackException, SystemException {
         LOGGER.trace("commit()");
-        checkActive("commit");
+
+        // Check rollback only
+        if (status == JtaTransactionStatus.MARKED_ROLLBACK) {
+            rollback();
+            throw rollbackException("Transaction marked for rollback");
+        }
+
+        // Check active
+        if (JtaTransactionStatus.ACTIVE != status) {
+            throw illegalStateException("Transaction status is not active (but " + status + "); commit not allowed.");
+        }
 
         // Before completion
         doBeforeCompletion();
 
+        if (enlistedXaResources.isEmpty()) {
+            doNoPhaseCommit();
+        } else if (enlistedXaResources.size() == 1) {
+            doSinglePhaseCommit();
+        } else {
+            doTwoPhaseCommit();
+        }
+    }
+
+    private void doBeforeCompletion() {
+        LOGGER.trace("doBeforeCompletion()");
+        try {
+            for (final Synchronization synchronization : synchronizations) {
+                synchronization.beforeCompletion();
+            }
+        } catch (final Exception e) {
+            LOGGER.info("Exception during synchronization.beforeCompletion", e);
+            status = JtaTransactionStatus.MARKED_ROLLBACK;
+        }
+    }
+
+    private void doNoPhaseCommit() throws SystemException {
+        LOGGER.trace("0-phase commit (no enlisted resources)");
+        boolean storeOk = store(true, () -> transactionStore.committed(globalXid));
+
+        status = JtaTransactionStatus.COMMITTED;
+        doSystemCallbacks();
+
+        if (!storeOk) {
+            throw systemException("Transaction was committed completely (DATA SHOULD BE CONSISTENT); transaction log could not be stored successfully! "
+                    + "View log for previous error(s).");
+        }
+
+        doAfterCompletion();
+    }
+
+    private void doSinglePhaseCommit() throws RollbackException, SystemException {
+        if (status == JtaTransactionStatus.ACTIVE) {
+            LOGGER.debug("Starting 1-phase commit");
+            // Commit
+            status = JtaTransactionStatus.COMMITTING;
+            boolean storeOk = store(true, () -> transactionStore.committing(globalXid));
+
+            final EnlistedXaResource enlistedXaResource = enlistedXaResources.get(0);
+            final XAResourceAdapter xaResource = enlistedXaResource.getXaResource();
+            final BranchJtaXid branchXid = enlistedXaResource.getBranchXid();
+            if (storeOk) {
+                storeOk = store(true, () -> transactionStore.committing(branchXid, xaResource.getResourceManager()));
+            }
+
+            if (!storeOk) {
+                status = JtaTransactionStatus.MARKED_ROLLBACK;
+            } else {
+                try {
+                    LOGGER.debug("Calling xa_end on {} using xid {}", xaResource, branchXid);
+                    xaResource.end(branchXid, XAResource.TMSUCCESS);
+                    enlistedXaResource.setEnded();
+
+                    LOGGER.debug("Calling xa_commit on {} using xid {}", xaResource, branchXid);
+                    xaResource.commit(branchXid, true);
+                    storeOk = store(true, () -> transactionStore.committed(branchXid, xaResource.getResourceManager()));
+
+                    status = JtaTransactionStatus.COMMITTED;
+
+                    storeOk = store(storeOk, () -> transactionStore.committed(globalXid));
+
+                    LOGGER.debug("1-phase commit committed");
+                    doSystemCallbacks();
+
+                    if (!storeOk) {
+                        throw systemException(
+                                "Transaction was committed completely (DATA SHOULD BE CONSISTENT); transaction log could not be stored successfully! "
+                                        + "View log for previous error(s).");
+                    }
+
+                    doAfterCompletion();
+                } catch (XAException e) {
+                    LOGGER.debug("1-phase commit failed", e);
+                    status = JtaTransactionStatus.MARKED_ROLLBACK;
+                }
+            }
+        }
+
+        if (status != JtaTransactionStatus.COMMITTED) {
+            LOGGER.debug("Transaction could not be not committed. Executing rollback.");
+            doRollback();
+            throw rollbackException("Transaction rolled back. View log for previous error(s).");
+        }
+    }
+
+    private void doTwoPhaseCommit() throws RollbackException, SystemException {
         if (status == JtaTransactionStatus.ACTIVE) {
             // Preparing
             LOGGER.debug("Starting prepare of 2-phase commit");
@@ -294,18 +395,6 @@ public final class JtaTransaction implements Transaction {
             LOGGER.debug("Transaction not be prepared. Executing rollback.");
             doRollback();
             throw rollbackException("Transaction rolled back. View log for previous error(s).");
-        }
-    }
-
-    private void doBeforeCompletion() {
-        LOGGER.trace("doBeforeCompletion()");
-        try {
-            for (final Synchronization synchronization : synchronizations) {
-                synchronization.beforeCompletion();
-            }
-        } catch (final Exception e) {
-            LOGGER.info("Exception during synchronization.beforeCompletion", e);
-            status = JtaTransactionStatus.MARKED_ROLLBACK;
         }
     }
 
@@ -432,6 +521,10 @@ public final class JtaTransaction implements Transaction {
         doAfterCompletion();
     }
 
+    /* ***************************** */
+    /* *** ROLLBACK **************** */
+    /* ***************************** */
+
     @Override
     public synchronized void rollback() throws SystemException {
         LOGGER.trace("rollback()");
@@ -442,10 +535,7 @@ public final class JtaTransaction implements Transaction {
         doRollback();
     }
 
-
     private void doRollback() throws SystemException {
-        LOGGER.trace("rollback()");
-
         // Rollback
         LOGGER.debug("Starting rollback");
         status = JtaTransactionStatus.ROLLING_BACK;

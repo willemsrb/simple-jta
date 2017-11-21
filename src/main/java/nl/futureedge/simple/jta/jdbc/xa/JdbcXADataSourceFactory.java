@@ -36,6 +36,7 @@ public final class JdbcXADataSourceFactory implements InitializingBean, FactoryB
         this.port = port;
     }
 
+    @Required
     public void setDatabase(final String database) {
         this.database = database;
     }

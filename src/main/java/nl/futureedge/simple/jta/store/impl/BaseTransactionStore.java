@@ -116,7 +116,6 @@ public abstract class BaseTransactionStore implements DisposableBean, JtaTransac
         return TransactionStatus.COMMITTING.equals(getPersistentTransaction(xid).getStatus());
     }
 
-
     @Override
     public final void active(final GlobalJtaXid xid) throws JtaTransactionStoreException {
         LOGGER.debug("active(xid={})", xid);
@@ -164,7 +163,12 @@ public abstract class BaseTransactionStore implements DisposableBean, JtaTransac
     @Override
     public final void committing(final GlobalJtaXid xid) throws JtaTransactionStoreException {
         LOGGER.debug("committing(xid={})", xid);
-        getPersistentTransaction(xid).save(TransactionStatus.COMMITTING);
+        // Store if transaction exists:
+        // - As it is created by preparing this status is written by a two-phase commit
+        // - As a single phase single-phase commit does not prepare the status is not written
+        if (transactions.containsKey(xid.getTransactionId()) || storeAll) {
+            getPersistentTransaction(xid).save(TransactionStatus.COMMITTING);
+        }
     }
 
     @Override
@@ -188,7 +192,10 @@ public abstract class BaseTransactionStore implements DisposableBean, JtaTransac
     @Override
     public final void committed(final BranchJtaXid xid, final String resourceManager) throws JtaTransactionStoreException {
         LOGGER.debug("committed(xid={}, resourceManager={})", xid, resourceManager);
-        getPersistentTransaction(xid).save(TransactionStatus.COMMITTED, xid.getBranchId(), resourceManager);
+        // Store if transaction exists (see description at {@link #committing(GlobalJtaXid)}
+        if (transactions.containsKey(xid.getTransactionId()) || storeAll) {
+            getPersistentTransaction(xid).save(TransactionStatus.COMMITTED, xid.getBranchId(), resourceManager);
+        }
     }
 
     @Override
@@ -206,6 +213,7 @@ public abstract class BaseTransactionStore implements DisposableBean, JtaTransac
     @Override
     public final void rollingBack(final GlobalJtaXid xid) throws JtaTransactionStoreException {
         LOGGER.debug("rollingBack(xid={})", xid);
+        // Store if transaction exists (see description at {@link #committing(GlobalJtaXid)}
         if (transactions.containsKey(xid.getTransactionId()) || storeAll) {
             getPersistentTransaction(xid).save(TransactionStatus.ROLLING_BACK);
         }
@@ -232,6 +240,7 @@ public abstract class BaseTransactionStore implements DisposableBean, JtaTransac
     @Override
     public final void rolledBack(final BranchJtaXid xid, final String resourceManager) throws JtaTransactionStoreException {
         LOGGER.debug("rolledBack(xid={}, resourceManager={})", xid, resourceManager);
+        // Store if transaction exists (see description at {@link #committing(GlobalJtaXid)}
         if (transactions.containsKey(xid.getTransactionId()) || storeAll) {
             getPersistentTransaction(xid).save(TransactionStatus.ROLLED_BACK, xid.getBranchId(), resourceManager);
         }

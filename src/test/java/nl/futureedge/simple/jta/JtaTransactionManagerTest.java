@@ -97,7 +97,6 @@ public class JtaTransactionManagerTest {
             // Expected
         }
 
-        transactionManager.rollback();
         Assert.assertEquals(Status.STATUS_ROLLEDBACK, transaction.getStatus());
         Assert.assertEquals(Status.STATUS_NO_TRANSACTION, transactionManager.getStatus());
     }

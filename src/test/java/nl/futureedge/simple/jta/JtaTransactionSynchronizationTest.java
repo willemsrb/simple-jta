@@ -21,7 +21,9 @@ import org.mockito.Mockito;
 public class JtaTransactionSynchronizationTest {
 
     private XAResource resourceOne;
+    private XAResource resourceTwo;
     private BranchJtaXid branchXidOne;
+    private BranchJtaXid branchXidTwo;
     private Synchronization synchronization;
 
     private JtaTransactionStore transactionStore;
@@ -43,7 +45,9 @@ public class JtaTransactionSynchronizationTest {
         globalXid = ReflectionTestUtils.getField(transaction, "globalXid");
 
         resourceOne = Mockito.mock(XAResource.class);
-        transaction.enlistResource(new XAResourceAdapter("resourceOne", true, false, resourceOne));
+        resourceTwo = Mockito.mock(XAResource.class);
+        transaction.enlistResource(new XAResourceAdapter("resourceOne", false, false, resourceOne));
+        transaction.enlistResource(new XAResourceAdapter("resourceTwo", false, false, resourceTwo));
 
         synchronization = Mockito.mock(Synchronization.class);
         transaction.registerSynchronization(synchronization);
@@ -62,10 +66,17 @@ public class JtaTransactionSynchronizationTest {
         ordered.verify(transactionStore).active(branchXidOneCaptor.capture(),Mockito.eq( "resourceOne"));
         branchXidOne = branchXidOneCaptor.getValue();
         ordered.verify(resourceOne).start(branchXidOne, XAResource.TMNOFLAGS);
+
+        final ArgumentCaptor<BranchJtaXid> branchXidTwoCaptor = ArgumentCaptor.forClass(BranchJtaXid.class);
+        ordered.verify(transactionStore).active(branchXidTwoCaptor.capture(),Mockito.eq( "resourceTwo"));
+        branchXidTwo = branchXidTwoCaptor.getValue();
+        ordered.verify(resourceTwo).start(branchXidTwo, XAResource.TMNOFLAGS);
     }
 
     @After
     public void destroy() throws Exception {
+        Mockito.verifyNoMoreInteractions(synchronization, transactionStore, resourceOne, resourceTwo);
+
         transactionManager.destroy();
     }
 
@@ -73,7 +84,7 @@ public class JtaTransactionSynchronizationTest {
     public void testCommit() throws Exception {
         transaction.commit();
 
-        InOrder ordered = Mockito.inOrder(synchronization, transactionStore, resourceOne);
+        InOrder ordered = Mockito.inOrder(synchronization, transactionStore, resourceOne, resourceTwo);
         verifySetup(ordered);
 
         // Before completion
@@ -85,6 +96,10 @@ public class JtaTransactionSynchronizationTest {
         ordered.verify(resourceOne).end(branchXidOne, XAResource.TMSUCCESS);
         ordered.verify(resourceOne).prepare(branchXidOne);
         ordered.verify(transactionStore).prepared(branchXidOne, "resourceOne");
+        ordered.verify(transactionStore).preparing(branchXidTwo, "resourceTwo");
+        ordered.verify(resourceTwo).end(branchXidTwo, XAResource.TMSUCCESS);
+        ordered.verify(resourceTwo).prepare(branchXidTwo);
+        ordered.verify(transactionStore).prepared(branchXidTwo, "resourceTwo");
         ordered.verify(transactionStore).prepared(globalXid);
 
         // Commit (commit)
@@ -92,14 +107,15 @@ public class JtaTransactionSynchronizationTest {
         ordered.verify(transactionStore).committing(branchXidOne, "resourceOne");
         ordered.verify(resourceOne).commit(branchXidOne, false);
         ordered.verify(transactionStore).committed(branchXidOne, "resourceOne");
+        ordered.verify(transactionStore).committing(branchXidTwo, "resourceTwo");
+        ordered.verify(resourceTwo).commit(branchXidTwo, false);
+        ordered.verify(transactionStore).committed(branchXidTwo, "resourceTwo");
         ordered.verify(transactionStore).committed(globalXid);
 
         ordered.verify(transactionStore).transactionCompleted(transaction);
 
         // After completion
         ordered.verify(synchronization).afterCompletion(Status.STATUS_COMMITTED);
-
-        Mockito.verifyNoMoreInteractions(synchronization, transactionStore, resourceOne);
     }
 
     @Test
@@ -112,7 +128,7 @@ public class JtaTransactionSynchronizationTest {
             // Expected
         }
 
-        InOrder ordered = Mockito.inOrder(synchronization, transactionStore, resourceOne);
+        InOrder ordered = Mockito.inOrder(synchronization, transactionStore, resourceOne, resourceTwo);
         verifySetup(ordered);
 
         // Before completion
@@ -129,6 +145,10 @@ public class JtaTransactionSynchronizationTest {
         ordered.verify(transactionStore).rollingBack(branchXidOne, "resourceOne");
         ordered.verify(resourceOne).rollback(branchXidOne);
         ordered.verify(transactionStore).rolledBack(branchXidOne, "resourceOne");
+        ordered.verify(transactionStore).rollingBack(branchXidTwo, "resourceTwo");
+        ordered.verify(resourceTwo).end(branchXidTwo, XAResource.TMFAIL);
+        ordered.verify(resourceTwo).rollback(branchXidTwo);
+        ordered.verify(transactionStore).rolledBack(branchXidTwo, "resourceTwo");
         ordered.verify(transactionStore).rolledBack(globalXid);
 
         ordered.verify(transactionStore).transactionCompleted(transaction);
@@ -136,8 +156,7 @@ public class JtaTransactionSynchronizationTest {
         // After completion
         ordered.verify(synchronization).afterCompletion(Status.STATUS_ROLLEDBACK);
 
-        Mockito.verifyNoMoreInteractions(synchronization, transactionStore, resourceOne);
-    }
+   }
 
     @Test
     public void testBeforeCompletionFailure() throws Exception {
@@ -149,7 +168,7 @@ public class JtaTransactionSynchronizationTest {
             // Expected
         }
 
-        InOrder ordered = Mockito.inOrder(synchronization, transactionStore, resourceOne);
+        InOrder ordered = Mockito.inOrder(synchronization, transactionStore, resourceOne, resourceTwo);
         verifySetup(ordered);
 
         // Before completion
@@ -161,6 +180,10 @@ public class JtaTransactionSynchronizationTest {
         ordered.verify(resourceOne).end(branchXidOne, XAResource.TMFAIL);
         ordered.verify(resourceOne).rollback(branchXidOne);
         ordered.verify(transactionStore).rolledBack(branchXidOne, "resourceOne");
+        ordered.verify(transactionStore).rollingBack(branchXidTwo, "resourceTwo");
+        ordered.verify(resourceTwo).end(branchXidTwo, XAResource.TMFAIL);
+        ordered.verify(resourceTwo).rollback(branchXidTwo);
+        ordered.verify(transactionStore).rolledBack(branchXidTwo, "resourceTwo");
         ordered.verify(transactionStore).rolledBack(globalXid);
 
         ordered.verify(transactionStore).transactionCompleted(transaction);
@@ -168,6 +191,5 @@ public class JtaTransactionSynchronizationTest {
         // After completion
         ordered.verify(synchronization).afterCompletion(Status.STATUS_ROLLEDBACK);
 
-        Mockito.verifyNoMoreInteractions(synchronization, transactionStore, resourceOne);
     }
 }

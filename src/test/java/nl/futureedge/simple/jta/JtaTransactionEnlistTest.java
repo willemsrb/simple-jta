@@ -1,5 +1,6 @@
 package nl.futureedge.simple.jta;
 
+import javax.transaction.RollbackException;
 import javax.transaction.Status;
 import javax.transaction.SystemException;
 import javax.transaction.xa.XAException;
@@ -309,5 +310,27 @@ public class JtaTransactionEnlistTest {
         ordered.verify(resourceTwo).start(Mockito.any(), Mockito.eq(XAResource.TMJOIN));
 
         Mockito.verifyNoMoreInteractions(transactionStore, resourceOne, resourceTwo, resourceThree);
+    }
+
+    @Test
+    public void testCheckActive() throws Exception {
+        transaction.setRollbackOnly();
+
+        try {
+            transaction.enlistResource(new XAResourceAdapter("resourceOne", true, false, resourceOne));
+            Assert.fail("RollbackException expected");
+        } catch (final RollbackException e) {
+            // Expected
+        }
+
+        transaction.rollback();
+
+        try {
+            transaction.enlistResource(new XAResourceAdapter("resourceOne", true, false, resourceOne));
+            Assert.fail("IllegalStateException expected");
+        } catch (final IllegalStateException e) {
+            // Expected
+        }
+
     }
 }

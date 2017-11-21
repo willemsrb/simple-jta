@@ -132,6 +132,67 @@ public class JdbcTransactionStoreIT extends AbstractJdbcTransactionStoreIT {
     }
 
     @Test
+    public void testCommitWithoutResources() throws Exception {
+        // This is the sequence when using no resources (and thus triggering a no-phase commit).
+        long transactionId = subject.nextTransactionId();
+        final GlobalJtaXid globalXid = new GlobalJtaXid("test", transactionId);
+
+        Assert.assertEquals(null, selectStatus(transactionId));
+
+        // ENLIST
+        subject.active(globalXid);
+
+        // COMMIT
+
+        subject.committed(globalXid);
+        Assert.assertEquals(null, selectStatus(transactionId));
+
+        debugTables();
+    }
+
+    @Test
+    public void testCommitWithoutPrepare() throws Exception {
+        // This is the sequence when using one resource (and thus triggering a single-phase commit).
+        long transactionId = subject.nextTransactionId();
+        final GlobalJtaXid globalXid = new GlobalJtaXid("test", transactionId);
+        final BranchJtaXid branchXid = globalXid.createBranchXid();
+
+        final String resource1 = "resourceOne";
+
+        Assert.assertEquals(null, selectStatus(transactionId));
+        Assert.assertEquals(null, selectStatus(transactionId, resource1));
+
+        // ENLIST
+        subject.active(globalXid);
+        Assert.assertEquals(null, selectStatus(transactionId));
+        Assert.assertEquals(null, selectStatus(transactionId, resource1));
+
+        subject.active(branchXid, resource1);
+        Assert.assertEquals(null, selectStatus(transactionId));
+        Assert.assertEquals(null, selectStatus(transactionId, resource1));
+
+        // COMMIT
+        subject.committing(globalXid);
+        Assert.assertEquals(null, selectStatus(transactionId));
+        Assert.assertEquals(null, selectStatus(transactionId, resource1));
+
+        subject.committing(branchXid, resource1);
+        Assert.assertEquals(null, selectStatus(transactionId));
+        Assert.assertEquals(null, selectStatus(transactionId, resource1));
+
+        subject.committed(branchXid, resource1);
+        Assert.assertEquals(null, selectStatus(transactionId));
+        Assert.assertEquals(null, selectStatus(transactionId, resource1));
+
+        subject.committed(globalXid);
+        Assert.assertEquals(null, selectStatus(transactionId));
+        Assert.assertEquals(null, selectStatus(transactionId, resource1));
+
+        debugTables();
+    }
+
+
+    @Test
     public void testCommitFailed() throws Exception {
         long transactionId = subject.nextTransactionId();
         final GlobalJtaXid globalXid = new GlobalJtaXid("test", transactionId);

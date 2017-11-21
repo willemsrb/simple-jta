@@ -308,7 +308,6 @@ public class JtaTransactionTest {
         } catch (RollbackException e) {
             // Expected
         }
-        transaction.rollback();
         try {
             transaction.commit();
             Assert.fail("IllegalStateException expected");
