@@ -32,8 +32,10 @@ public final class TransactionManagerParser extends AbstractBeanDefinitionParser
 
     @Override
     protected AbstractBeanDefinition parseInternal(final Element element, final ParserContext parserContext) {
+        final String id = element.getAttribute("id");
+
         // TRANSACTION-STORE
-        final String transactionStoreBeanName = addTransactionStore(element, parserContext);
+        final String transactionStoreBeanName = addTransactionStore(id == null ? null : id + "-jtaTransaction", element, parserContext);
 
         // JTA-TRANSACTION-MANAGER
         final BeanDefinitionBuilder jtaTransactionManagerBuilder = BeanDefinitionBuilder.rootBeanDefinition(JtaTransactionManager.class);
@@ -42,7 +44,7 @@ public final class TransactionManagerParser extends AbstractBeanDefinitionParser
         SpringConfigParser.handleDependsOn(jtaTransactionManagerBuilder, element);
 
         final BeanDefinition jtaTransactionManager = jtaTransactionManagerBuilder.getBeanDefinition();
-        final String jtaTransactionManagerBeanName = register(jtaTransactionManager, parserContext);
+        final String jtaTransactionManagerBeanName = register(id == null ? null : id + "-jtaTransactionManager", jtaTransactionManager, parserContext);
 
         // SPRING-JTA-TRANSACTION-MANAGER
         final BeanDefinitionBuilder
@@ -53,22 +55,22 @@ public final class TransactionManagerParser extends AbstractBeanDefinitionParser
         return springJtaTransactionManagerBuilder.getBeanDefinition();
     }
 
-    private String addTransactionStore(final Element element, final ParserContext parserContext) {
+    private String addTransactionStore(final String id, final Element element, final ParserContext parserContext) {
         final List<Element> jdbcTransactionStores = DomUtils.getChildElementsByTagName(element, "jdbc-transaction-store");
         if (!jdbcTransactionStores.isEmpty()) {
-            return addJdbcTransactionStore(jdbcTransactionStores.iterator().next(), parserContext);
+            return addJdbcTransactionStore(id, jdbcTransactionStores.iterator().next(), parserContext);
         }
 
         final List<Element> fileTransactionStores = DomUtils.getChildElementsByTagName(element, "file-transaction-store");
         if (!fileTransactionStores.isEmpty()) {
-            return addFileTransactionStore(fileTransactionStores.iterator().next(), parserContext);
+            return addFileTransactionStore(id, fileTransactionStores.iterator().next(), parserContext);
         }
 
         // Should not happen, the XSD should make sure of that
         return null;
     }
 
-    private String addFileTransactionStore(final Element element, final ParserContext parserContext) {
+    private String addFileTransactionStore(final String id, final Element element, final ParserContext parserContext) {
         // FILE-TRANSACTION-STORE
         final BeanDefinitionBuilder fileTransactionStoreBuilder = BeanDefinitionBuilder.rootBeanDefinition(FileTransactionStore.class);
 
@@ -80,11 +82,11 @@ public final class TransactionManagerParser extends AbstractBeanDefinitionParser
         SpringConfigParser.handleDependsOn(fileTransactionStoreBuilder, element);
 
         final BeanDefinition fileTransactionStore = fileTransactionStoreBuilder.getBeanDefinition();
-        return register(fileTransactionStore, parserContext);
+        return register(id, fileTransactionStore, parserContext);
     }
 
 
-    private String addJdbcTransactionStore(final Element element, final ParserContext parserContext) {
+    private String addJdbcTransactionStore(final String id, final Element element, final ParserContext parserContext) {
         // JDBC-TRANSACTION-STORE
         final BeanDefinitionBuilder jdbcTransactionStoreBuilder = BeanDefinitionBuilder.rootBeanDefinition(JdbcTransactionStore.class);
 
@@ -103,11 +105,11 @@ public final class TransactionManagerParser extends AbstractBeanDefinitionParser
         SpringConfigParser.handleDependsOn(jdbcTransactionStoreBuilder, element);
 
         final BeanDefinition jdbcTransactionStore = jdbcTransactionStoreBuilder.getBeanDefinition();
-        return register(jdbcTransactionStore, parserContext);
+        return register(id, jdbcTransactionStore, parserContext);
     }
 
-    private String register(final BeanDefinition definition, final ParserContext parserContext) {
-        final String name = parserContext.getReaderContext().generateBeanName(definition);
+    private String register(final String id, final BeanDefinition definition, final ParserContext parserContext) {
+        final String name = id == null ? parserContext.getReaderContext().generateBeanName(definition) : id;
         parserContext.getRegistry().registerBeanDefinition(name, definition);
         return name;
     }
