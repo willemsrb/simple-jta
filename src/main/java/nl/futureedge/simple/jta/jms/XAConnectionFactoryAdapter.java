@@ -6,6 +6,8 @@ import javax.jms.ConnectionFactory;
 import javax.jms.JMSException;
 import javax.jms.XAConnection;
 import javax.jms.XAConnectionFactory;
+import javax.jms.XASession;
+import javax.transaction.xa.XAResource;
 import nl.futureedge.simple.jta.JtaTransactionManager;
 import nl.futureedge.simple.jta.xa.XAResourceAdapter;
 import org.slf4j.Logger;
@@ -72,9 +74,19 @@ public final class XAConnectionFactoryAdapter implements ConnectionFactory, Init
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        // Execute recovery
-        jtaTransactionManager
-                .recover(new XAResourceAdapter(uniqueName, false, false, xaConnectionFactory.createXAConnection().createXASession().getXAResource()));
+        final XAConnection xaConnection = xaConnectionFactory.createXAConnection();
+        try {
+            final XASession xaSession = xaConnection.createXASession();
+            final XAResource xaResource = xaSession.getXAResource();
+            final XAResourceAdapter xaResourceAdapter = new XAResourceAdapter(uniqueName, false, false, xaResource);
+
+            // Execute recovery
+            jtaTransactionManager.recover(xaResourceAdapter);
+
+            xaSession.close();
+        } finally {
+            xaConnection.close();
+        }
     }
 
     /* ******************************************************** */

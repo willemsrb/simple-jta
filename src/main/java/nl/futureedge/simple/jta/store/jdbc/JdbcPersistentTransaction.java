@@ -2,7 +2,6 @@ package nl.futureedge.simple.jta.store.jdbc;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.sql.Connection;
 import java.sql.Date;
 import java.sql.Types;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
@@ -23,7 +22,6 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
     private final JdbcSqlTemplate sqlTemplate;
     private final long transactionId;
 
-    private Connection reservedConnection;
     private boolean hasSaved;
 
     JdbcPersistentTransaction(final JdbcConnectionPool pool, final JdbcSqlTemplate sqlTemplate, final long transactionId) {
@@ -36,15 +34,10 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
     public void save(final TransactionStatus status) throws JtaTransactionStoreException {
         LOGGER.debug("save(status={})", status);
 
-        // From preparing the updates should come in quick succession; reserve a 'private' connection until the transaction is closed
-        if (status == TransactionStatus.PREPARING) {
-            reservedConnection = pool.borrowConnection();
-        }
-
         hasSaved = true;
         final Date now = new Date(System.currentTimeMillis());
 
-        JdbcHelper.doInConnection(pool, reservedConnection, connection -> {
+        JdbcHelper.doInConnection(pool, connection -> {
             final int rows = JdbcHelper.prepareAndExecuteUpdate(connection, sqlTemplate.updateTransactionStatus(), updateStatement -> {
                 updateStatement.setString(1, status.toString());
                 updateStatement.setDate(2, now);
@@ -76,7 +69,7 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
         final Date now = new Date(System.currentTimeMillis());
         final String stackTrace = printStackTrace(cause);
 
-        JdbcHelper.doInConnection(pool, reservedConnection, connection -> {
+        JdbcHelper.doInConnection(pool, connection -> {
             final int rows = JdbcHelper.prepareAndExecuteUpdate(connection, sqlTemplate.updateResourceStatus(), updateStatement -> {
                 updateStatement.setString(1, status.toString());
                 if (stackTrace == null) {
@@ -123,17 +116,13 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
 
     @Override
     public void close() {
-        if (reservedConnection != null) {
-            pool.returnConnection(reservedConnection);
-            reservedConnection = null;
-        }
     }
 
     @Override
     public void remove() throws JtaTransactionStoreException {
         LOGGER.debug("remove()");
         if (hasSaved) {
-            JdbcHelper.doInConnection(pool, reservedConnection, connection -> {
+            JdbcHelper.doInConnection(pool, connection -> {
                 JdbcHelper.prepareAndExecuteUpdate(
                         connection,
                         sqlTemplate.deleteResourceStatus(),
@@ -152,7 +141,7 @@ final class JdbcPersistentTransaction implements PersistentTransaction {
     @Override
     public TransactionStatus getStatus() throws JtaTransactionStoreException {
         LOGGER.debug("getStatus()");
-        return JdbcHelper.doInConnection(pool, reservedConnection, connection ->
+        return JdbcHelper.doInConnection(pool, connection ->
                 JdbcHelper.prepareAndExecuteQuery(
                         connection,
                         sqlTemplate.selectTransactionStatus(),

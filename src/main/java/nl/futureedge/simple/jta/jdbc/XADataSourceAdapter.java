@@ -11,6 +11,7 @@ import javax.sql.XAConnection;
 import javax.sql.XADataSource;
 import javax.transaction.RollbackException;
 import javax.transaction.SystemException;
+import javax.transaction.xa.XAResource;
 import nl.futureedge.simple.jta.JtaTransaction;
 import nl.futureedge.simple.jta.JtaTransactionManager;
 import nl.futureedge.simple.jta.xa.XAResourceAdapter;
@@ -97,9 +98,18 @@ public final class XADataSourceAdapter implements DataSource, InitializingBean {
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        // Execute recovery
-        jtaTransactionManager.recover(new XAResourceAdapter(uniqueName, false, false, xaDataSource.getXAConnection().getXAResource()));
+        final XAConnection xaConnection = xaDataSource.getXAConnection();
+        try {
+            final XAResource xaResource = xaConnection.getXAResource();
+            final XAResourceAdapter xaResourceAdapter = new XAResourceAdapter(uniqueName, false, false, xaResource);
+
+            // Execute recovery
+            jtaTransactionManager.recover(xaResourceAdapter);
+        } finally {
+            xaConnection.close();
+        }
     }
+
 
     /* ******************************************************** */
     /* ******************************************************** */
@@ -190,7 +200,7 @@ public final class XADataSourceAdapter implements DataSource, InitializingBean {
                 } else {
                     LOGGER.debug("XADataSource returned connection outside transaction");
                 }
-                return xaConnectionSupplier.getXAConnection().getConnection();
+                return new UnmanagedConnectionAdapter(xaConnectionSupplier.getXAConnection());
             }
         }
 

@@ -1,24 +1,23 @@
 package nl.futureedge.simple.jta.store.jdbc;
 
+import com.mchange.v2.c3p0.ComboPooledDataSource;
+import com.mchange.v2.c3p0.ConnectionCustomizer;
+import java.beans.PropertyVetoException;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 import nl.futureedge.simple.jta.store.JtaTransactionStoreException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Very simplistic connection pool.
+ * Connection pool.
  */
 final class JdbcConnectionPool {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcConnectionPool.class);
 
-    private final JdbcHelper.ConnectionSupplier connectionSupplier;
+    private final ComboPooledDataSource cpds;
 
-    private final List<Connection> all = new ArrayList<>();
-    private final List<Connection> available = new ArrayList<>();
 
     /**
      * Constructor.
@@ -29,27 +28,48 @@ final class JdbcConnectionPool {
      * @throws JtaTransactionStoreException thrown, when the driver could not be loaded or the connection could not be made
      */
     JdbcConnectionPool(final String driver, final String url, final String user, final String password) throws JtaTransactionStoreException {
+        cpds = new ComboPooledDataSource();
+
+        // Connection
         try {
-            connectionSupplier = JdbcHelper.createConnectionSupplier(driver, url, user, password);
-        } catch (ClassNotFoundException e) {
+            cpds.setDriverClass(driver);
+        } catch (PropertyVetoException e) {
             throw new JtaTransactionStoreException("Could not load JDBC driver class", e);
         }
-        available.add(createConnection());
+        cpds.setJdbcUrl(url);
+        if (user != null && !"".equals(user)) {
+            cpds.setUser(user);
+            cpds.setPassword(password);
+        }
+
+        // Enable statement caching
+        cpds.setMaxStatementsPerConnection(30);
+
+        // Try to acquire connections for ever
+        cpds.setAcquireIncrement(5);
+        cpds.setAcquireRetryAttempts(-1);
+        cpds.setAcquireRetryDelay(100);
+
+        // Pool
+        cpds.setInitialPoolSize(5);
+        cpds.setMaxPoolSize(25);
+        cpds.setMinPoolSize(5);
+        cpds.setMaxIdleTimeExcessConnections(300);
+
+        // Connection testing
+        cpds.setTestConnectionOnCheckout(false);
+        cpds.setTestConnectionOnCheckin(true);
+        cpds.setIdleConnectionTestPeriod(30);
+
+        // Set autocommit off
+        cpds.setConnectionCustomizerClassName(PoolConnectionCustomizer.class.getName());
     }
 
     /**
      * Close all connections; does not check if connections have been returned.
      */
     void close() {
-        synchronized (available) {
-            for (final Connection connection : all) {
-                try {
-                    connection.close();
-                } catch (final SQLException e) {
-                    LOGGER.warn("Could not close transaction store connection", e);
-                }
-            }
-        }
+        cpds.close();
     }
 
     /**
@@ -58,16 +78,11 @@ final class JdbcConnectionPool {
      * @throws JtaTransactionStoreException Thrown when a new connection could not be made
      */
     Connection borrowConnection() throws JtaTransactionStoreException {
-        final Connection result;
-        synchronized (available) {
-            if (available.isEmpty()) {
-                result = null;
-            } else {
-                result = available.remove(0);
-            }
+        try {
+            return cpds.getConnection();
+        } catch (final SQLException e) {
+            throw new JtaTransactionStoreException("Could not get connection", e);
         }
-
-        return result == null ? createConnection() : result;
     }
 
     /**
@@ -75,20 +90,33 @@ final class JdbcConnectionPool {
      * @param connection connection
      */
     void returnConnection(final Connection connection) {
-        synchronized (available) {
-            available.add(connection);
-        }
-    }
-
-    private Connection createConnection() throws JtaTransactionStoreException {
         try {
-            final Connection connection = connectionSupplier.getConnection();
-            connection.setAutoCommit(false);
-            all.add(connection);
-            return connection;
-        } catch (SQLException e) {
-            throw new JtaTransactionStoreException("Could not open connection for transaction logs", e);
+            connection.close();
+        } catch (final SQLException e) {
+            LOGGER.warn("Could not return connection to pool", e);
         }
     }
 
+    public static class PoolConnectionCustomizer implements ConnectionCustomizer {
+
+        @Override
+        public void onAcquire(Connection connection, String parentDataSourceIdentityToken) throws SQLException {
+            // Nothing
+        }
+
+        @Override
+        public void onDestroy(Connection connection, String parentDataSourceIdentityToken) {
+            // Nothing
+        }
+
+        @Override
+        public void onCheckOut(Connection connection, String parentDataSourceIdentityToken) throws SQLException {
+            connection.setAutoCommit(false);
+        }
+
+        @Override
+        public void onCheckIn(Connection connection, String parentDataSourceIdentityToken) {
+            // Nothing
+        }
+    }
 }

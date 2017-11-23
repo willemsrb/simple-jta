@@ -141,6 +141,13 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- JDBC connection pooling -->
+        <dependency>
+            <groupId>com.mchange</groupId>
+            <artifactId>c3p0</artifactId>
+            <version>0.9.5.2</version>
+        </dependency>
+
         <!-- Unit tests -->
         <dependency>
             <groupId>junit</groupId>

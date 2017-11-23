@@ -95,8 +95,7 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
         if (create) {
             LOGGER.debug("Creating tables");
             try {
-                JdbcHelper.doInConnection(pool, null,
-                        connection -> {
+                JdbcHelper.doInConnection(pool, connection -> {
                             JdbcDatabaseInitializer.create(connection, sqlTemplate);
                             return null;
                         }
@@ -118,7 +117,7 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
 
     @Override
     public void cleanup() throws JtaTransactionStoreException {
-        JdbcHelper.doInConnection(pool, null, connection -> {
+        JdbcHelper.doInConnection(pool, connection -> {
             JdbcHelper.prepareAndExecuteQuery(
                     connection,
                     sqlTemplate.selectTransactionIdAndStatus(),
@@ -175,16 +174,15 @@ public final class JdbcTransactionStore extends BaseTransactionStore implements 
     @Override
     public long nextTransactionId() throws JtaTransactionStoreException {
         LOGGER.debug("nextTransactionId()");
-        return JdbcHelper.doInConnection(pool, null,
-                connection -> JdbcHelper.prepareAndExecuteQuery(connection,
-                        sqlTemplate.selectNextTransactionId(),
-                        ps -> { /* No statement parameters */ },
-                        resultSet -> {
-                            if (!resultSet.next()) {
-                                throw new SQLException("No row returned from sequence select statement");
-                            }
-                            return resultSet.getLong(1);
-                        })
+        return JdbcHelper.doInConnection(pool, connection -> JdbcHelper.prepareAndExecuteQuery(connection,
+                sqlTemplate.selectNextTransactionId(),
+                ps -> { /* No statement parameters */ },
+                resultSet -> {
+                    if (!resultSet.next()) {
+                        throw new SQLException("No row returned from sequence select statement");
+                    }
+                    return resultSet.getLong(1);
+                })
         );
     }
 

@@ -57,6 +57,9 @@ public class XAConnectionFactoryAdapterTest {
         Mockito.verify(xaSession).getXAResource();
         Mockito.verify(xaResource).recover(XAResource.TMENDRSCAN);
 
+        Mockito.verify(xaSession).close();
+        Mockito.verify(xaConnection).close();
+
         Mockito.verifyNoMoreInteractions(xaConnectionFactory, xaConnection, xaSession, xaResource);
     }
 

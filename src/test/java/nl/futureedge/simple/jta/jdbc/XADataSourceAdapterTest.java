@@ -56,6 +56,8 @@ public class XADataSourceAdapterTest {
         Mockito.verify(xaConnection).getXAResource();
         Mockito.verify(xaResource).recover(XAResource.TMENDRSCAN);
 
+        Mockito.verify(xaConnection).close();
+
         Mockito.verifyNoMoreInteractions(xaDataSource, xaConnection, xaResource);
     }
 
@@ -120,7 +122,7 @@ public class XADataSourceAdapterTest {
         Mockito.when(xaConnection.getConnection()).thenReturn(connection);
         Mockito.when(xaDataSource.getXAConnection()).thenReturn(xaConnection);
 
-        Assert.assertSame(connection, subject.getConnection());
+        Assert.assertNotNull(subject.getConnection());
 
         Mockito.verify(xaDataSource).getXAConnection();
         Mockito.verify(xaConnection).getConnection();
@@ -136,7 +138,7 @@ public class XADataSourceAdapterTest {
         Mockito.when(xaConnection.getConnection()).thenReturn(connection);
         Mockito.when(xaDataSource.getXAConnection()).thenReturn(xaConnection);
 
-        Assert.assertSame(connection, subject.getConnection());
+        Assert.assertNotNull(subject.getConnection());
 
         Mockito.verify(xaDataSource).getXAConnection();
         Mockito.verify(xaConnection).getConnection();

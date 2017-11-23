@@ -20,15 +20,14 @@ final class JdbcHelper {
     /**
      * Execute in a connection.
      * @param pool pool to use if no connection was given
-     * @param connectionToUse connection to use (can be null)
      * @param returnable code to execute
      * @param <T> return type
      * @return the result from the code to execute
      * @throws JtaTransactionStoreException Thrown if an unexpected error has occurred
      */
-    static <T> T doInConnection(final JdbcConnectionPool pool, final Connection connectionToUse, final JdbcFunction<T> returnable)
+    static <T> T doInConnection(final JdbcConnectionPool pool, final JdbcFunction<T> returnable)
             throws JtaTransactionStoreException {
-        final Connection connection = connectionToUse == null ? pool.borrowConnection() : connectionToUse;
+        final Connection connection = pool.borrowConnection();
         try {
             try {
                 final T result = returnable.apply(connection);
@@ -43,9 +42,7 @@ final class JdbcHelper {
                 throw new JtaTransactionStoreException("Could not execute SQL", e);
             }
         } finally {
-            if (connectionToUse == null) {
-                pool.returnConnection(connection);
-            }
+            pool.returnConnection(connection);
         }
     }
 
