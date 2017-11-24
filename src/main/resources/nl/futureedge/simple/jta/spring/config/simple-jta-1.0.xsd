@@ -13,8 +13,8 @@
     <xsd:element name="transaction-manager">
         <xsd:annotation>
             <xsd:documentation><![CDATA[
-                Creates an custom JTA transaction manager, a custom JTA transaction monitor and a
-                Spring JTA Platform Transaction Manager.
+                Creates an custom JTA transaction manager and a Spring JTA Platform Transaction Manager; The Spring JTA Platform Transaction manager will
+                use the 'id' given to this element.
             ]]></xsd:documentation>
             <xsd:appinfo>
                 <tool:annotation>
@@ -26,6 +26,14 @@
             <xsd:complexContent>
                 <xsd:extension base="beans:identifiedType">
                     <xsd:choice maxOccurs="1">
+                        <xsd:element name="no-transaction-store" type="noTransactionStoreType">
+                            <xsd:annotation>
+                                <xsd:documentation><![CDATA[
+                                    No transaction store.
+                                ]]></xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+
                         <xsd:element name="file-transaction-store" type="fileTransactionStoreType">
                             <xsd:annotation>
                                 <xsd:documentation><![CDATA[
@@ -41,6 +49,14 @@
                             </xsd:annotation>
                         </xsd:element>
                     </xsd:choice>
+
+                    <xsd:attribute name="jta-transaction-manager-id" type="xsd:ID">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                                The unique identifier used for the custom JTA transaction manager.
+                            ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
 
                     <xsd:attribute name="name" type="xsd:string">
                         <xsd:annotation>
@@ -79,7 +95,33 @@
         </xsd:complexType>
     </xsd:element>
 
+    <xsd:complexType name="noTransactionStoreType">
+        <xsd:attribute name="id" type="xsd:ID">
+            <xsd:annotation>
+                <xsd:documentation><![CDATA[
+                    The unique identifier for a bean.
+                ]]></xsd:documentation>
+            </xsd:annotation>
+        </xsd:attribute>
+
+        <xsd:attribute name="suppress-warning" type="xsd:boolean">
+            <xsd:annotation>
+                <xsd:documentation><![CDATA[
+                    Suppress the warning message during startup that without a transaction store recovery cannot be done.
+                ]]></xsd:documentation>
+            </xsd:annotation>
+        </xsd:attribute>
+    </xsd:complexType>
+
     <xsd:complexType name="fileTransactionStoreType">
+        <xsd:attribute name="id" type="xsd:ID">
+            <xsd:annotation>
+                <xsd:documentation><![CDATA[
+                    The unique identifier for a bean.
+                ]]></xsd:documentation>
+            </xsd:annotation>
+        </xsd:attribute>
+
         <xsd:attribute name="location" type="xsd:string">
             <xsd:annotation>
                 <xsd:documentation><![CDATA[
@@ -115,6 +157,14 @@
     </xsd:complexType>
 
     <xsd:complexType name="jdbcTransactionStoreType">
+        <xsd:attribute name="id" type="xsd:ID">
+            <xsd:annotation>
+                <xsd:documentation><![CDATA[
+                    The unique identifier for a bean.
+                ]]></xsd:documentation>
+            </xsd:annotation>
+        </xsd:attribute>
+
         <xsd:attribute name="create" type="xsd:boolean">
             <xsd:annotation>
                 <xsd:documentation><![CDATA[
@@ -202,6 +252,14 @@
                         </xsd:annotation>
                     </xsd:attribute>
 
+                    <xsd:attribute name="jta-transaction-manager" type="xsd:string">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                                The custom JTA transaction manager (autowired by default).
+                            ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
+
                     <xsd:attribute name="unique-name" type="xsd:string" use="required">
                         <xsd:annotation>
                             <xsd:documentation><![CDATA[
@@ -280,6 +338,14 @@
                                 Can be used to create one or more aliases illegal in an (XML) id.
                                 Multiple aliases can be separated by any number of spaces, commas,
                                 or semi-colons (or indeed any mixture of the three).
+                            ]]></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:attribute>
+
+                    <xsd:attribute name="jta-transaction-manager" type="xsd:string">
+                        <xsd:annotation>
+                            <xsd:documentation><![CDATA[
+                                The custom JTA transaction manager (autowired by default).
                             ]]></xsd:documentation>
                         </xsd:annotation>
                     </xsd:attribute>
@@ -420,7 +486,7 @@
                             ]]></xsd:documentation>
                         </xsd:annotation>
                     </xsd:attribute>
-                    
+
                     <xsd:attribute name="driver" type="xsd:string" use="required">
                         <xsd:annotation>
                             <xsd:documentation><![CDATA[

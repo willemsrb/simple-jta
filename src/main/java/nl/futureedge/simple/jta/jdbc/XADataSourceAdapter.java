@@ -65,8 +65,7 @@ public final class XADataSourceAdapter implements DataSource, InitializingBean {
      * Set the jta transaction manager to use.
      * @param jtaTransactionManager jta transaction manager
      */
-    @Required
-    @Autowired
+    @Autowired(required = true)
     public void setJtaTransactionManager(final JtaTransactionManager jtaTransactionManager) {
         this.jtaTransactionManager = jtaTransactionManager;
     }

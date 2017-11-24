@@ -32,7 +32,7 @@ final class JdbcConnectionPool {
 
         // Connection
         try {
-            cpds.setDriverClass(driver);
+            cpds.setDriverClass("".equals(driver) ? null : driver);
         } catch (PropertyVetoException e) {
             throw new JtaTransactionStoreException("Could not load JDBC driver class", e);
         }
@@ -45,9 +45,9 @@ final class JdbcConnectionPool {
         // Enable statement caching
         cpds.setMaxStatementsPerConnection(30);
 
-        // Try to acquire connections for ever
+        // Try to acquire connections for 30 seconds
         cpds.setAcquireIncrement(5);
-        cpds.setAcquireRetryAttempts(-1);
+        cpds.setAcquireRetryAttempts(30);
         cpds.setAcquireRetryDelay(100);
 
         // Pool

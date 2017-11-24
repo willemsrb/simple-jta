@@ -1,6 +1,8 @@
 package nl.futureedge.simple.jta.spring.config;
 
 
+import static nl.futureedge.simple.jta.spring.config.SpringConfigParser.isEmpty;
+
 import nl.futureedge.simple.jta.jms.XAConnectionFactoryAdapter;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
@@ -29,6 +31,11 @@ public final class ConnectionFactoryParser extends AbstractBeanDefinitionParser 
     protected AbstractBeanDefinition parseInternal(final Element element, final ParserContext parserContext) {
         // CONNECTION-FACTORY
         final BeanDefinitionBuilder builder = BeanDefinitionBuilder.rootBeanDefinition(XAConnectionFactoryAdapter.class);
+
+        final String jtaTransactionManager = element.getAttribute("jta-transaction-manager");
+        if (!isEmpty(jtaTransactionManager)) {
+            builder.addPropertyReference("jtaTransactionManager", jtaTransactionManager);
+        }
         builder.addPropertyValue("uniqueName", element.getAttribute("unique-name"));
         builder.addPropertyReference("xaConnectionFactory", element.getAttribute("xa-connection-factory"));
         SpringConfigParser.handleDependsOn(builder, element);

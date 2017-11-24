@@ -23,4 +23,12 @@ public final class SpringConfigParser {
             }
         }
     }
+
+    public static boolean isEmpty(final String value) {
+        return value == null || "".equals(value);
+    }
+
+    public static String whenEmpty(final String value, final String whenEmpty) {
+        return isEmpty(value) ? whenEmpty : value;
+    }
 }
