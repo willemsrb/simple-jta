@@ -163,7 +163,6 @@ public class BasicIT {
                         return null;
                     }
                 });
-        System.out.println("Received message: " + text);
         Assert.assertEquals("test message", text);
     }
 

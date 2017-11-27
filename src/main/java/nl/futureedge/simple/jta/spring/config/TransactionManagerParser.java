@@ -38,8 +38,6 @@ public final class TransactionManagerParser extends AbstractBeanDefinitionParser
     protected AbstractBeanDefinition parseInternal(final Element element, final ParserContext parserContext) {
         final String id = element.getAttribute("id");
 
-        System.out.println("ID: " + id);
-
         // TRANSACTION-STORE
         final String transactionStoreBeanName = addTransactionStore(isEmpty(id) ? null : id + "-jtaTransactionStore", element, parserContext);
 
@@ -64,9 +62,6 @@ public final class TransactionManagerParser extends AbstractBeanDefinitionParser
     }
 
     private String addTransactionStore(final String defaultId, final Element element, final ParserContext parserContext) {
-        System.out.println("AddTransactionStore.defaultId: " + defaultId);
-
-
         final List<Element> jdbcTransactionStores = DomUtils.getChildElementsByTagName(element, "jdbc-transaction-store");
         if (!jdbcTransactionStores.isEmpty()) {
             return addJdbcTransactionStore(defaultId, jdbcTransactionStores.iterator().next(), parserContext);
@@ -79,7 +74,7 @@ public final class TransactionManagerParser extends AbstractBeanDefinitionParser
 
         final List<Element> noTransactionStores = DomUtils.getChildElementsByTagName(element, "no-transaction-store");
         if (!noTransactionStores.isEmpty()) {
-            return addNoTransactionStore(defaultId, fileTransactionStores.iterator().next(), parserContext);
+            return addNoTransactionStore(defaultId, noTransactionStores.iterator().next(), parserContext);
         }
 
         // Should not happen, the XSD should make sure of that
@@ -114,7 +109,6 @@ public final class TransactionManagerParser extends AbstractBeanDefinitionParser
         final BeanDefinitionBuilder fileTransactionStoreBuilder = BeanDefinitionBuilder.rootBeanDefinition(FileTransactionStore.class);
 
         final String id = element.getAttribute("id");
-        System.out.println("addFileTransactionStore.id: " + id);
         fileTransactionStoreBuilder.addPropertyValue("baseDirectory", element.getAttribute("location"));
         final String storeAll = element.getAttribute("store-all-states");
         if (!isEmpty(storeAll)) {
@@ -125,7 +119,6 @@ public final class TransactionManagerParser extends AbstractBeanDefinitionParser
         final BeanDefinition fileTransactionStore = fileTransactionStoreBuilder.getBeanDefinition();
         return register(whenEmpty(id, defaultId), fileTransactionStore, parserContext);
     }
-
 
     private String addNoTransactionStore(final String defaultId, final Element element, final ParserContext parserContext) {
         // NO-TRANSACTION-STORE
@@ -141,11 +134,8 @@ public final class TransactionManagerParser extends AbstractBeanDefinitionParser
         return register(whenEmpty(id, defaultId), noTransactionStore, parserContext);
     }
 
-
     private String register(final String id, final BeanDefinition definition, final ParserContext parserContext) {
-        System.out.println("register.id: " + id);
         final String name = whenEmpty(id, parserContext.getReaderContext().generateBeanName(definition));
-        System.out.println("register.name: " + name);
         parserContext.getRegistry().registerBeanDefinition(name, definition);
         return name;
     }
